@@ -1,0 +1,5 @@
+record_id,program,status,visit_date,wait_days,active
+R-1001,Memory Clinic,open,2026-06-15,18,true
+R-1002,Behavioural Support,open,2026-06-18,9,true
+R-1003,Mood Clinic,closed,2026-06-20,31,false
+R-1004,Memory Clinic,open,2026-06-21,14,true

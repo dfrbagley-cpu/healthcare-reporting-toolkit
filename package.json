@@ -1,0 +1,16 @@
+{
+  "name": "healthcare-reporting-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open browser-based tools for reliable healthcare operational reporting.",
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/validate-site.mjs",
+    "validate": "npm run test && npm run check"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0"
+}
