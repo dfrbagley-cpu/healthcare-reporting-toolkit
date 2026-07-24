@@ -67,12 +67,13 @@ export function buildReportingWindow(options) {
 
   const current = makePeriod(start, end);
   let comparison;
+  let comparisonStart;
+  let comparisonEnd;
 
   if (comparisonType === "prior_year") {
-    comparison = makePeriod(
-      addYearsClamped(start, -1),
-      addYearsClamped(end, -1)
-    );
+    comparisonStart = addYearsClamped(start, -1);
+    comparisonEnd = addYearsClamped(end, -1);
+    comparison = makePeriod(comparisonStart, comparisonEnd);
   } else {
     const comparisonEnd = addDays(start, -1);
     comparison = makePeriod(
@@ -88,6 +89,15 @@ export function buildReportingWindow(options) {
     );
   }
   if (
+    comparisonType === "prior_year" &&
+    (wasCalendarDateClamped(start, comparisonStart) ||
+      wasCalendarDateClamped(end, comparisonEnd))
+  ) {
+    warnings.push(
+      "A February 29 boundary was clamped to February 28 in the comparison period."
+    );
+  }
+  if (
     comparison.startDate <= current.endDate &&
     comparison.endDate >= current.startDate
   ) {
@@ -98,16 +108,31 @@ export function buildReportingWindow(options) {
 
   const startFiscalYear = fiscalYearLabel(start, fiscalStartMonth);
   const endFiscalYear = fiscalYearLabel(end, fiscalStartMonth);
+  const comparisonStartFiscalYear = fiscalYearLabel(
+    comparison.startDate,
+    fiscalStartMonth
+  );
+  const comparisonEndFiscalYear = fiscalYearLabel(
+    comparison.endDate,
+    fiscalStartMonth
+  );
+  const currentFiscalYear = joinFiscalYears(
+    startFiscalYear,
+    endFiscalYear
+  );
+  const comparisonFiscalYear = joinFiscalYears(
+    comparisonStartFiscalYear,
+    comparisonEndFiscalYear
+  );
 
   return {
     type,
     typeLabel: WINDOW_LABELS[type],
     comparisonType,
     comparisonLabel: COMPARISON_LABELS[comparisonType],
-    fiscalYear:
-      startFiscalYear === endFiscalYear
-        ? endFiscalYear
-        : `${startFiscalYear} → ${endFiscalYear}`,
+    fiscalYear: currentFiscalYear,
+    currentFiscalYear,
+    comparisonFiscalYear,
     current: stripDates(current),
     comparison: stripDates(comparison),
     warnings
@@ -130,4 +155,17 @@ function stripDates(period) {
     end: period.end,
     days: period.days
   };
+}
+
+function joinFiscalYears(startLabel, endLabel) {
+  return startLabel === endLabel
+    ? endLabel
+    : `${startLabel} → ${endLabel}`;
+}
+
+function wasCalendarDateClamped(original, shifted) {
+  return (
+    original.getUTCMonth() !== shifted.getUTCMonth() ||
+    original.getUTCDate() !== shifted.getUTCDate()
+  );
 }

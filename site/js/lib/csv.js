@@ -8,6 +8,7 @@ export function parseCsv(input) {
   let row = [];
   let field = "";
   let inQuotes = false;
+  let quoteClosed = false;
 
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
@@ -19,6 +20,7 @@ export function parseCsv(input) {
           index += 1;
         } else {
           inQuotes = false;
+          quoteClosed = true;
         }
       } else {
         field += character;
@@ -26,8 +28,29 @@ export function parseCsv(input) {
       continue;
     }
 
-    if (character === '"' && field === "") {
+    if (quoteClosed) {
+      if (character === ",") {
+        row.push(field);
+        field = "";
+        quoteClosed = false;
+      } else if (character === "\n" || character === "\r") {
+        if (character === "\r" && text[index + 1] === "\n") {
+          index += 1;
+        }
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+        quoteClosed = false;
+      } else {
+        throw new Error(
+          "CSV contains characters after a closing quote and before the next delimiter."
+        );
+      }
+    } else if (character === '"' && field === "") {
       inQuotes = true;
+    } else if (character === '"') {
+      throw new Error("CSV contains a quote inside an unquoted field.");
     } else if (character === ",") {
       row.push(field);
       field = "";

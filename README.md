@@ -8,6 +8,8 @@ Open, browser-based tools for common healthcare operational reporting tasks.
 
 **Live toolkit:** <https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/>
 
+[![Healthcare Reporting Toolkit — visible inputs, stated assumptions, exportable results](site/social-card.png)](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/)
+
 ## What is included
 
 | Tool | Question it answers | Output |
@@ -53,10 +55,12 @@ The tools are decision support:
 - Reporting periods use calendar dates and inclusive boundaries. They do not
   implement 4-4-5 calendars, holiday calendars, or organization-specific exclusions.
 - Extract values are compared as text. Inferred type changes are screening
-  signals, not a formal schema.
+  signals, not a formal schema. Inputs must be UTF-8 comma-delimited CSV.
 - The waitlist planner uses a deterministic fluid-queue approximation with
   constant average arrivals and capacity. It is not a patient-level prediction,
-  discrete-event simulation, or clinical prioritization model.
+  discrete-event simulation, or clinical prioritization model. Its recommended
+  capacity is the larger of the amount needed to meet the selected horizon
+  target and the steady-state floor implied by average arrivals.
 
 Every material assumption is repeated beside the relevant tool.
 
@@ -100,3 +104,5 @@ focuses on implementation conformance.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the synthetic-data and scope
 boundaries. The code is licensed under [Apache License 2.0](LICENSE).
+
+Created and maintained by [David Bagley](https://github.com/dfrbagley-cpu).

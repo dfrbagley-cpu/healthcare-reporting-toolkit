@@ -6,9 +6,10 @@ Security fixes are applied to the latest release.
 
 ## Reporting a vulnerability
 
-Please use GitHub's private vulnerability reporting feature for this repository.
-Do not open a public issue containing a working exploit, sensitive data, or
-personal health information.
+Use GitHub's private vulnerability-reporting feature under **Security →
+Advisories** when it is available. If that option is unavailable, open a
+minimal public issue asking the maintainer to establish private contact; do not
+include exploit details, sensitive data, or personal health information.
 
 ## Data handling
 

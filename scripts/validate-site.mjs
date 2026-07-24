@@ -9,9 +9,7 @@ const siteRoot = join(projectRoot, "site");
 const htmlPath = join(siteRoot, "index.html");
 const html = readFileSync(htmlPath, "utf8");
 const siteFiles = walk(siteRoot);
-const projectFiles = walk(projectRoot).filter(
-  (path) => !path.includes(`${join(projectRoot, ".git")}`)
-);
+const projectFiles = walk(projectRoot);
 
 const checks = [];
 function check(name, action) {
@@ -24,6 +22,8 @@ check("required public files exist", () => {
     htmlPath,
     join(siteRoot, "styles.css"),
     join(siteRoot, "js", "app.js"),
+    join(siteRoot, "favicon.svg"),
+    join(siteRoot, "social-card.png"),
     join(projectRoot, "README.md"),
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md")
@@ -42,9 +42,46 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.equal((html.match(/<h1\b/g) ?? []).length, 4);
 });
 
+check("sharing metadata identifies the canonical live site", () => {
+  const canonical =
+    "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/";
+  assert.match(html, new RegExp(`<link\\s+rel="canonical"\\s+href="${canonical}"`));
+  assert.match(html, new RegExp(`<meta\\s+property="og:url"\\s+content="${canonical}"`));
+  assert.match(html, /property="og:image"[\s\S]*social-card\.png/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+
+  const socialCard = readFileSync(join(siteRoot, "social-card.png"));
+  assert.equal(
+    socialCard.subarray(0, 8).toString("hex"),
+    "89504e470d0a1a0a",
+    "Social card must be a PNG"
+  );
+  assert.equal(socialCard.readUInt32BE(16), 1200, "Social card width must be 1200");
+  assert.equal(socialCard.readUInt32BE(20), 630, "Social card height must be 630");
+});
+
 check("HTML IDs are unique", () => {
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "Duplicate HTML id found");
+});
+
+check("every JavaScript element reference resolves to an HTML ID", () => {
+  const ids = new Set(
+    [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1])
+  );
+  for (const file of siteFiles.filter((path) => path.endsWith(".js"))) {
+    const source = readFileSync(file, "utf8");
+    const referencedIds = [
+      ...source.matchAll(/\bbyId\("([^"]+)"\)/g)
+    ].map((match) => match[1]);
+    for (const id of referencedIds) {
+      assert.equal(
+        ids.has(id),
+        true,
+        `${relative(projectRoot, file)} references missing HTML id #${id}`
+      );
+    }
+  }
 });
 
 check("every labelled control resolves to an element", () => {
@@ -146,18 +183,20 @@ check("external links use HTTPS and opener protection", () => {
 
 check("repository boundary scan is clean", () => {
   const forbiddenTerms = [
-    /St\.?\s*Joseph(?:'s)?/i,
-    /\bSJHH\b/i,
-    /\bDovetale\b/i,
-    /\bIronworks\b/i,
-    /\bAcland\s+Martin\b/i,
-    /\bhealth-reporting-engine\b/i
+    new RegExp(["St", "\\.?\\s*Joseph(?:'s)?"].join(""), "i"),
+    new RegExp(`\\b${["SJ", "HH"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Dove", "tale"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Iron", "works"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Acland", "\\s+Martin"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["health-reporting-", "engine"].join("")}\\b`, "i")
   ];
   const secretPatterns = [
     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
-    /\bghp_[A-Za-z0-9]{20,}\b/,
-    /\bgithub_pat_[A-Za-z0-9_]{20,}\b/,
-    /\bsk-[A-Za-z0-9]{20,}\b/
+    new RegExp(`\\b${["gh", "p_"].join("")}[A-Za-z0-9]{20,}\\b`),
+    new RegExp(`\\b${["github_", "pat_"].join("")}[A-Za-z0-9_]{20,}\\b`),
+    new RegExp(`\\b${["s", "k-"].join("")}[A-Za-z0-9]{20,}\\b`),
+    new RegExp(["@gmail", "[.]com\\b"].join(""), "i"),
+    new RegExp(["/(?:work", "space|ro", "ot)/"].join(""))
   ];
   for (const file of projectFiles.filter(isTextFile)) {
     const source = readFileSync(file, "utf8");
@@ -178,6 +217,9 @@ for (const name of checks) {
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    if (directory === projectRoot && entry.isDirectory() && entry.name === ".git") {
+      return [];
+    }
     const path = join(directory, entry.name);
     return entry.isDirectory() ? walk(path) : [path];
   });
@@ -193,6 +235,7 @@ function isTextFile(path) {
     ".json",
     ".md",
     ".mjs",
+    ".svg",
     ".txt",
     ".yml"
   ].some((extension) => path.endsWith(extension)) || path.endsWith("NOTICE");

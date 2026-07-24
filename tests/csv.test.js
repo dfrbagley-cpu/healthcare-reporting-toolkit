@@ -34,6 +34,14 @@ test("rejects malformed headers and rows", () => {
   assert.throws(() => parseCsv("id,id\n1,2\n"), /unique/);
   assert.throws(() => parseCsv("id,\n1,2\n"), /must have a header/);
   assert.throws(() => parseCsv('id,note\n1,"open'), /unclosed/);
+  assert.throws(
+    () => parseCsv('id,note\n1,"closed"x\n'),
+    /after a closing quote/
+  );
+  assert.throws(
+    () => parseCsv('id,note\n1,un"quoted\n'),
+    /inside an unquoted field/
+  );
   assert.throws(() => parseCsv("id\n1,extra\n"), /more values/);
 });
 
