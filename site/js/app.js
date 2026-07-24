@@ -21,6 +21,7 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 const windowState = { result: null };
 const auditState = { baseline: null, current: null, audit: null };
+const auditLoadVersions = { baseline: 0, current: 0 };
 const capacityState = { result: null };
 
 initializeNavigation();
@@ -60,15 +61,13 @@ function initializeWindowTool() {
   const updateVisibility = () => {
     const type = typeInput.value;
     byId("window-as-of-group").hidden = type === "custom";
-    byId("window-fiscal-group").hidden = ![
-      "fiscal_ytd",
-      "fiscal_qtd"
-    ].includes(type);
+    byId("window-fiscal-group").hidden = false;
     byId("window-rolling-group").hidden = type !== "rolling";
     byId("window-custom-group").hidden = type !== "custom";
   };
 
   typeInput.addEventListener("change", updateVisibility);
+  form.addEventListener("input", invalidateWindowResult);
   updateVisibility();
 
   form.addEventListener("submit", (event) => {
@@ -87,6 +86,7 @@ function initializeWindowTool() {
       windowState.result = result;
       renderWindowResult(result);
     } catch (error) {
+      invalidateWindowResult();
       showError("window-error", error);
     }
   });
@@ -106,9 +106,9 @@ function initializeWindowTool() {
     }
     const result = windowState.result;
     const text = [
-      `${result.typeLabel} (${result.fiscalYear})`,
+      `${result.typeLabel} (${result.currentFiscalYear})`,
       `Current: ${result.current.start} to ${result.current.end} (${result.current.days} inclusive days)`,
-      `${result.comparisonLabel}: ${result.comparison.start} to ${result.comparison.end} (${result.comparison.days} inclusive days)`
+      `${result.comparisonLabel} (${result.comparisonFiscalYear}): ${result.comparison.start} to ${result.comparison.end} (${result.comparison.days} inclusive days)`
     ].join("\n");
     try {
       await copyText(text);
@@ -131,7 +131,7 @@ function initializeWindowTool() {
           start: result.current.start,
           end: result.current.end,
           inclusive_days: result.current.days,
-          fiscal_year: result.fiscalYear
+          fiscal_year: result.currentFiscalYear
         },
         {
           period: "comparison",
@@ -139,7 +139,7 @@ function initializeWindowTool() {
           start: result.comparison.start,
           end: result.comparison.end,
           inclusive_days: result.comparison.days,
-          fiscal_year: result.fiscalYear
+          fiscal_year: result.comparisonFiscalYear
         }
       ],
       ["period", "method", "start", "end", "inclusive_days", "fiscal_year"]
@@ -152,7 +152,7 @@ function initializeWindowTool() {
 function renderWindowResult(result) {
   byId("window-empty").hidden = true;
   byId("window-result").hidden = false;
-  setText("window-fiscal-label", result.fiscalYear);
+  setText("window-fiscal-label", result.currentFiscalYear);
   setText(
     "window-current-range",
     `${longDate(result.current.start)} – ${longDate(result.current.end)}`
@@ -173,13 +173,15 @@ function renderWindowResult(result) {
 
   renderList("window-warnings", result.warnings);
   byId("window-warning-box").hidden = result.warnings.length === 0;
-  byId("window-result-title").focus({ preventScroll: true });
+  byId("window-result-title").focus();
 }
 
 function initializeAuditTool() {
   const form = byId("audit-form");
   const baselineInput = byId("audit-baseline");
   const currentInput = byId("audit-current");
+  byId("audit-key-columns").addEventListener("input", invalidateAuditResult);
+  byId("audit-trim").addEventListener("change", invalidateAuditResult);
 
   baselineInput.addEventListener("change", async () => {
     await loadAuditFile(
@@ -220,6 +222,9 @@ function initializeAuditTool() {
   byId("audit-example").addEventListener("click", () => {
     try {
       clearError("audit-error");
+      auditLoadVersions.baseline += 1;
+      auditLoadVersions.current += 1;
+      invalidateAuditResult();
       baselineInput.value = "";
       currentInput.value = "";
       auditState.baseline = {
@@ -258,23 +263,36 @@ function initializeAuditTool() {
 }
 
 async function loadAuditFile(file, stateKey, nameElementId) {
+  const loadVersion = auditLoadVersions[stateKey] + 1;
+  auditLoadVersions[stateKey] = loadVersion;
+  invalidateAuditResult();
+  auditState[stateKey] = null;
   if (!file) {
-    auditState[stateKey] = null;
     setText(nameElementId, "No file selected");
     return;
   }
+  setText(nameElementId, "Loading file…");
   try {
     clearError("audit-error");
     if (file.size > MAX_FILE_BYTES) {
       throw new Error(`${file.name} is larger than the 10 MB limit.`);
     }
-    const data = parseCsv(await file.text());
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(
+      await file.arrayBuffer()
+    );
+    if (auditLoadVersions[stateKey] !== loadVersion) {
+      return;
+    }
+    const data = parseCsv(text);
     if (data.records.length > MAX_RECORDS) {
       throw new Error(`${file.name} contains more than 100,000 data rows.`);
     }
     auditState[stateKey] = { name: file.name, data };
     setText(nameElementId, describeExtract(auditState[stateKey]));
   } catch (error) {
+    if (auditLoadVersions[stateKey] !== loadVersion) {
+      return;
+    }
     auditState[stateKey] = null;
     setText(nameElementId, "Could not load file");
     showError("audit-error", error);
@@ -348,7 +366,7 @@ function renderAuditResult(audit) {
       ? `Showing first ${preview.length} of ${differences.length} material differences`
       : `Showing ${differences.length} material difference${differences.length === 1 ? "" : "s"}`
   );
-  byId("audit-result-title").focus({ preventScroll: true });
+  byId("audit-result-title").focus();
 }
 
 function buildDifferenceRow(difference) {
@@ -401,7 +419,7 @@ function initializeCapacityTool() {
     "capacity-target-wait": "4"
   };
 
-  const run = () => {
+  const run = (focusResult = false) => {
     try {
       clearError("capacity-error");
       const result = calculateCapacityPlan({
@@ -414,21 +432,23 @@ function initializeCapacityTool() {
         targetWaitWeeks: byId("capacity-target-wait").value
       });
       capacityState.result = result;
-      renderCapacityResult(result);
+      renderCapacityResult(result, focusResult);
     } catch (error) {
+      invalidateCapacityResult();
       showError("capacity-error", error);
     }
   };
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    run();
+    run(true);
   });
+  form.addEventListener("input", invalidateCapacityResult);
   byId("capacity-reset").addEventListener("click", () => {
     for (const [id, value] of Object.entries(defaults)) {
       byId(id).value = value;
     }
-    run();
+    run(true);
   });
   byId("capacity-horizon").addEventListener("input", () => {
     byId("capacity-change-week").max = byId("capacity-horizon").value || "104";
@@ -465,7 +485,7 @@ function initializeCapacityTool() {
   run();
 }
 
-function renderCapacityResult(result) {
+function renderCapacityResult(result, focusResult = false) {
   const finalCurrent = result.current.weeks.at(-1);
   const finalPlanned = result.planned.weeks.at(-1);
   setText("capacity-plan-backlog", formatNumber(finalPlanned.backlog, 1));
@@ -481,18 +501,27 @@ function renderCapacityResult(result) {
   );
   setText(
     "capacity-required-note",
-    `from week ${result.inputs.changeWeek} to meet target`
+    `from week ${result.inputs.changeWeek} to meet and sustain the target by week ${result.inputs.horizonWeeks}`
   );
 
   const status = byId("capacity-status");
   status.classList.toggle("on-track", result.onTrack);
   status.classList.toggle("off-track", !result.onTrack);
-  status.textContent = result.onTrack ? "Target reached" : "Target missed";
+  status.textContent = result.onTrack
+    ? "Target met at horizon"
+    : result.meetsTargetAtHorizon
+      ? "Temporary target"
+      : "Target missed";
 
   if (result.onTrack && result.targetWeek !== null) {
     setText(
       "capacity-target-note",
-      `At or below the ${formatNumber(result.inputs.targetWaitWeeks, 1)}-week proxy from week ${result.targetWeek} onward.`
+      `At or below the ${formatNumber(result.inputs.targetWaitWeeks, 1)}-week proxy from week ${result.targetWeek} through week ${result.inputs.horizonWeeks}; proposed capacity is at least average arrivals.`
+    );
+  } else if (result.meetsTargetAtHorizon) {
+    setText(
+      "capacity-target-note",
+      `The target is met at week ${result.inputs.horizonWeeks}, but proposed capacity is below average arrivals, so backlog grows again under this model.`
     );
   } else {
     const gap = Math.max(
@@ -503,12 +532,15 @@ function renderCapacityResult(result) {
       "capacity-target-note",
       gap > 0
         ? `The plan is about ${formatNumber(gap, 1)} completion${gap === 1 ? "" : "s"} per week below the target requirement.`
-        : "The target is not sustained within the selected horizon."
+        : "The target is not met at the selected horizon."
     );
   }
 
   drawCapacityChart(result);
   renderCapacityTable(result);
+  if (focusResult) {
+    byId("capacity-result-title").focus();
+  }
 }
 
 function drawCapacityChart(result) {
@@ -631,6 +663,7 @@ function drawCapacityChart(result) {
       fill: "none",
       stroke: "#b45309",
       "stroke-width": "3",
+      "stroke-dasharray": "9 6",
       "stroke-linecap": "round",
       "stroke-linejoin": "round"
     }),
@@ -777,6 +810,44 @@ function renderList(id, items) {
     listItem.textContent = item;
     list.append(listItem);
   }
+}
+
+function invalidateWindowResult() {
+  windowState.result = null;
+  clearError("window-error");
+  byId("window-result").hidden = true;
+  byId("window-empty").hidden = false;
+  setText("window-fiscal-label", "Awaiting inputs");
+  setText("window-action-status", "");
+}
+
+function invalidateAuditResult() {
+  auditState.audit = null;
+  clearError("audit-error");
+  byId("audit-result").hidden = true;
+  byId("audit-empty").hidden = false;
+  setText("audit-context", "Awaiting extracts");
+}
+
+function invalidateCapacityResult() {
+  capacityState.result = null;
+  clearError("capacity-error");
+  const status = byId("capacity-status");
+  status.classList.remove("on-track", "off-track");
+  status.textContent = "Inputs changed";
+  for (const id of [
+    "capacity-plan-backlog",
+    "capacity-plan-wait",
+    "capacity-current-backlog",
+    "capacity-required"
+  ]) {
+    setText(id, "—");
+  }
+  setText("capacity-plan-backlog-note", "run the scenario");
+  setText("capacity-required-note", "run the scenario");
+  setText("capacity-target-note", "Run the scenario to update the result.");
+  byId("capacity-chart").replaceChildren();
+  byId("capacity-table-body").replaceChildren();
 }
 
 function announce(id, message) {

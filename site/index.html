@@ -7,12 +7,50 @@
       name="description"
       content="Transparent browser-based tools for healthcare reporting periods, extract changes, and waitlist capacity scenarios."
     >
+    <meta name="author" content="David Bagley">
+    <meta name="referrer" content="no-referrer">
     <meta name="theme-color" content="#0b2838">
+    <link
+      rel="canonical"
+      href="https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/"
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Healthcare Reporting Toolkit">
+    <meta property="og:title" content="Healthcare Reporting Toolkit">
+    <meta
+      property="og:description"
+      content="Transparent browser-based tools for reporting periods, extract changes, and waitlist capacity scenarios."
+    >
+    <meta
+      property="og:url"
+      content="https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/"
+    >
+    <meta
+      property="og:image"
+      content="https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/social-card.png"
+    >
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta
+      property="og:image:alt"
+      content="Healthcare Reporting Toolkit: reporting periods, extract changes, and waitlist capacity."
+    >
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Healthcare Reporting Toolkit">
+    <meta
+      name="twitter:description"
+      content="Transparent browser-based tools for reporting periods, extract changes, and waitlist capacity scenarios."
+    >
+    <meta
+      name="twitter:image"
+      content="https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/social-card.png"
+    >
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'none'"
     >
     <title>Healthcare Reporting Toolkit</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
     <script type="module" src="js/app.js"></script>
   </head>
@@ -234,6 +272,9 @@
                 <option value="11">November</option>
                 <option value="12">December</option>
               </select>
+              <small>
+                Sets fiscal boundaries and the fiscal-year labels shown in the result.
+              </small>
             </div>
 
             <div id="window-rolling-group" class="field" hidden>
@@ -313,6 +354,9 @@
 
               <div class="result-table-wrap">
                 <table class="compact-table">
+                  <caption class="visually-hidden">
+                    Current and comparison reporting-window boundaries
+                  </caption>
                   <thead>
                     <tr>
                       <th scope="col">Period</th>
@@ -442,7 +486,7 @@
             </div>
 
             <p class="input-limit">
-              CSV only · maximum 10 MB per file · maximum 100,000 data rows
+              UTF-8 comma-delimited CSV · maximum 10 MB per file · maximum 100,000 data rows
             </p>
           </form>
 
@@ -541,6 +585,9 @@
               </div>
               <div class="result-table-wrap tall-table">
                 <table class="compact-table change-table">
+                  <caption class="visually-hidden">
+                    Preview of added, removed, and changed records
+                  </caption>
                   <thead>
                     <tr>
                       <th scope="col">Key</th>
@@ -600,29 +647,29 @@
             <div class="field-pair">
               <div class="field">
                 <label for="capacity-backlog">Current waitlist</label>
-                <input id="capacity-backlog" type="number" min="0" step="1" value="240">
+                <input id="capacity-backlog" type="number" min="0" step="1" value="240" required>
                 <small>People waiting now</small>
               </div>
               <div class="field">
                 <label for="capacity-arrivals">New referrals / week</label>
-                <input id="capacity-arrivals" type="number" min="0" step="0.1" value="42">
+                <input id="capacity-arrivals" type="number" min="0" step="0.1" value="42" required>
                 <small>Average arrivals</small>
               </div>
             </div>
 
             <div class="field">
               <label for="capacity-current">Current completions / week</label>
-              <input id="capacity-current" type="number" min="0" step="0.1" value="38">
+              <input id="capacity-current" type="number" min="0" step="0.1" value="38" required>
             </div>
 
             <div class="field-pair">
               <div class="field">
                 <label for="capacity-change-week">Change begins in week</label>
-                <input id="capacity-change-week" type="number" min="1" max="104" step="1" value="5">
+                <input id="capacity-change-week" type="number" min="1" max="104" step="1" value="5" required>
               </div>
               <div class="field">
                 <label for="capacity-proposed">Proposed completions / week</label>
-                <input id="capacity-proposed" type="number" min="0" step="0.1" value="50">
+                <input id="capacity-proposed" type="number" min="0" step="0.1" value="50" required>
               </div>
             </div>
 
@@ -630,14 +677,14 @@
               <div class="field">
                 <label for="capacity-horizon">Planning horizon</label>
                 <div class="input-suffix">
-                  <input id="capacity-horizon" type="number" min="1" max="104" step="1" value="26">
+                  <input id="capacity-horizon" type="number" min="1" max="104" step="1" value="26" required>
                   <span>weeks</span>
                 </div>
               </div>
               <div class="field">
                 <label for="capacity-target-wait">Target queue wait</label>
                 <div class="input-suffix">
-                  <input id="capacity-target-wait" type="number" min="0" step="0.1" value="4">
+                  <input id="capacity-target-wait" type="number" min="0" step="0.1" value="4" required>
                   <span>weeks</span>
                 </div>
               </div>
@@ -659,7 +706,7 @@
                 <span class="step-badge">Result</span>
                 <h2 id="capacity-result-title" tabindex="-1">Capacity outlook</h2>
               </div>
-              <span id="capacity-status" class="status-pill">Calculating</span>
+              <span id="capacity-status" class="status-pill" aria-live="polite">Calculating</span>
             </div>
 
             <div class="metric-grid capacity-metrics">
@@ -679,7 +726,7 @@
                 <small>at horizon</small>
               </article>
               <article>
-                <span>Capacity required</span>
+                <span>Sustainable capacity</span>
                 <strong id="capacity-required">—</strong>
                 <small id="capacity-required-note">after change</small>
               </article>
@@ -692,8 +739,8 @@
                   <p>People remaining after each week</p>
                 </div>
                 <div class="chart-legend" aria-label="Chart legend">
-                  <span class="legend-current">Current capacity</span>
-                  <span class="legend-plan">Proposed plan</span>
+                  <span class="legend-current">Current capacity (dashed)</span>
+                  <span class="legend-plan">Proposed plan (solid)</span>
                   <span class="legend-target">Target line</span>
                 </div>
               </div>
@@ -716,6 +763,9 @@
             </div>
             <div class="result-table-wrap">
               <table class="compact-table">
+                <caption class="visually-hidden">
+                  Waitlist milestones under current and proposed capacity
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Week</th>
@@ -737,7 +787,8 @@
               The model adds a constant average number of referrals each week,
               serves up to the available capacity, and carries remaining work
               forward. The wait proxy is backlog divided by that week's service
-              capacity.
+              capacity. Sustainable capacity is never reported below average
+              weekly arrivals under these assumptions.
             </p>
             <p>
               It assumes a single queue, no prioritization, no cancellations,

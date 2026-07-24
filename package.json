@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Open browser-based tools for reliable healthcare operational reporting.",
+  "author": "David Bagley",
   "scripts": {
     "test": "node --test",
     "check": "node scripts/validate-site.mjs",

@@ -42,20 +42,29 @@ export function calculateCapacityPlan(input) {
 
   const weeksBeforeChange = changeWeek - 1;
   const weeksAfterChange = horizonWeeks - weeksBeforeChange;
-  const demandBeforeAndDuringHorizon =
-    initialBacklog + weeklyArrivals * horizonWeeks;
-  const capacityBeforeChange = weeklyCapacity * weeksBeforeChange;
-  const requiredPostChangeCapacity =
-    (demandBeforeAndDuringHorizon - capacityBeforeChange) /
-    (weeksAfterChange + targetWaitWeeks);
-  const requiredCapacity = Math.max(0, requiredPostChangeCapacity);
+  const backlogBeforeChange = current.weeks[weeksBeforeChange].backlog;
+  const demandAfterChange =
+    backlogBeforeChange + weeklyArrivals * weeksAfterChange;
+  assertFiniteCalculation(demandAfterChange);
+  const requiredByHorizon =
+    demandAfterChange / (weeksAfterChange + targetWaitWeeks);
+  const sustainableCapacityFloor = weeklyArrivals;
+  const requiredCapacity = Math.max(
+    0,
+    requiredByHorizon,
+    sustainableCapacityFloor
+  );
   const targetFinalBacklog = targetWaitWeeks * proposedCapacity;
+  assertFiniteCalculation(targetFinalBacklog, requiredCapacity);
   const finalPlanned = planned.weeks.at(-1);
   const targetWeek = findSustainedTargetWeek(
     planned.weeks,
     targetWaitWeeks,
     changeWeek
   );
+  const meetsTargetAtHorizon =
+    waitProxy(finalPlanned.backlog, finalPlanned.capacity) <= targetWaitWeeks;
+  const sustainableUnderModel = proposedCapacity >= weeklyArrivals;
 
   return {
     inputs: {
@@ -69,12 +78,15 @@ export function calculateCapacityPlan(input) {
     },
     current,
     planned,
+    requiredByHorizon,
+    sustainableCapacityFloor,
     requiredPostChangeCapacity: requiredCapacity,
     requiredWholeCapacity: Math.ceil(requiredCapacity),
     targetFinalBacklog,
     targetWeek,
-    onTrack:
-      waitProxy(finalPlanned.backlog, finalPlanned.capacity) <= targetWaitWeeks
+    meetsTargetAtHorizon,
+    sustainableUnderModel,
+    onTrack: meetsTargetAtHorizon && sustainableUnderModel
   };
 }
 
@@ -122,6 +134,7 @@ export function simulateQueue({
     const served = Math.min(availableToServe, capacity);
     backlog = Math.max(0, availableToServe - served);
     totalServed += served;
+    assertFiniteCalculation(availableToServe, served, backlog, totalServed);
     weeks.push({
       week,
       arrivals: weeklyArrivals,
@@ -150,14 +163,24 @@ function waitProxy(backlog, capacity) {
 }
 
 function numberAtLeast(value, minimum, label) {
+  if (String(value ?? "").trim() === "") {
+    throw new Error(`${label} is required.`);
+  }
   const number = Number(value);
-  if (!Number.isFinite(number) || number < minimum) {
+  if (
+    !Number.isFinite(number) ||
+    !Number.isSafeInteger(Math.trunc(number)) ||
+    number < minimum
+  ) {
     throw new Error(`${label} must be ${minimum} or greater.`);
   }
   return number;
 }
 
 function wholeNumberBetween(value, minimum, maximum, label) {
+  if (String(value ?? "").trim() === "") {
+    throw new Error(`${label} is required.`);
+  }
   const number = Number(value);
   if (!Number.isInteger(number) || number < minimum || number > maximum) {
     throw new Error(
@@ -165,4 +188,12 @@ function wholeNumberBetween(value, minimum, maximum, label) {
     );
   }
   return number;
+}
+
+function assertFiniteCalculation(...values) {
+  if (values.some((value) => !Number.isFinite(value))) {
+    throw new Error(
+      "The scenario is too large to calculate safely. Use smaller input values."
+    );
+  }
 }

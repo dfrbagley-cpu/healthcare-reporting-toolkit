@@ -97,6 +97,17 @@ h3 {
   display: none !important;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .skip-link {
   position: fixed;
   z-index: 100;
@@ -775,8 +786,8 @@ main {
 .check-field small {
   display: block;
   margin-top: 0.35rem;
-  color: #667a82;
-  font-size: 0.72rem;
+  color: #586d75;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -920,8 +931,8 @@ input[type="file"]::file-selector-button {
 
 .input-limit {
   margin: 0.85rem 0 0;
-  color: #718187;
-  font-size: 0.68rem;
+  color: #536970;
+  font-size: 0.75rem;
   text-align: center;
 }
 
@@ -1150,8 +1161,8 @@ input[type="file"]::file-selector-button {
 }
 
 .metric-grid small {
-  color: #718187;
-  font-size: 0.65rem;
+  color: #586d75;
+  font-size: 0.75rem;
 }
 
 .schema-grid {
@@ -1302,7 +1313,7 @@ input[type="file"]::file-selector-button {
   gap: 0.65rem;
   justify-content: flex-end;
   color: var(--ink-soft);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 
 .chart-legend span::before {
@@ -1319,12 +1330,18 @@ input[type="file"]::file-selector-button {
   color: #b45309;
 }
 
+.chart-legend .legend-current::before {
+  height: 0;
+  background: none;
+  border-top: 3px dashed currentcolor;
+}
+
 .legend-plan {
   color: var(--teal);
 }
 
 .legend-target {
-  color: #74848a;
+  color: #61757d;
 }
 
 #capacity-chart {

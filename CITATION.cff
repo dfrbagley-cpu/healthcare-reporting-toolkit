@@ -3,7 +3,8 @@ message: "If you use this toolkit in published work, please cite it."
 title: "Healthcare Reporting Toolkit"
 type: software
 authors:
-  - name: "Healthcare Reporting Toolkit contributors"
+  - family-names: "Bagley"
+    given-names: "David"
 repository-code: "https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
 url: "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/"
 license: "Apache-2.0"

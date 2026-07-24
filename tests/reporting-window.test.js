@@ -22,6 +22,8 @@ test("builds an April fiscal year-to-date comparison", () => {
     days: 76
   });
   assert.equal(result.fiscalYear, "FY 2026/27");
+  assert.equal(result.currentFiscalYear, "FY 2026/27");
+  assert.equal(result.comparisonFiscalYear, "FY 2025/26");
   assert.deepEqual(result.warnings, []);
 });
 
@@ -73,6 +75,9 @@ test("clamps leap day when shifting a comparison year", () => {
     end: "2023-03-01",
     days: 2
   });
+  assert.deepEqual(result.warnings, [
+    "A February 29 boundary was clamped to February 28 in the comparison period."
+  ]);
 });
 
 test("builds an immediately preceding custom period of equal length", () => {
