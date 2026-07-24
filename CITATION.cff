@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this toolkit in published work, please cite it."
+title: "Healthcare Reporting Toolkit"
+type: software
+authors:
+  - name: "Healthcare Reporting Toolkit contributors"
+repository-code: "https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
+url: "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/"
+license: "Apache-2.0"
+version: "0.1.0"
+date-released: "2026-07-23"

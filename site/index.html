@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Transparent browser-based tools for healthcare reporting periods, extract changes, and waitlist capacity scenarios."
+    >
+    <meta name="theme-color" content="#0b2838">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'none'"
+    >
+    <title>Healthcare Reporting Toolkit</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#overview" aria-label="Healthcare Reporting Toolkit home">
+          <span class="brand-mark" aria-hidden="true">HR</span>
+          <span>
+            <strong>Healthcare Reporting</strong>
+            <small>Open toolkit</small>
+          </span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a href="#overview" data-route-link="overview">Overview</a>
+          <a href="#windows" data-route-link="windows">Periods</a>
+          <a href="#auditor" data-route-link="auditor">Extracts</a>
+          <a href="#capacity" data-route-link="capacity">Capacity</a>
+        </nav>
+        <a
+          class="header-repo-link"
+          href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
+          rel="noopener noreferrer"
+        >View source</a>
+      </div>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section id="overview" class="page overview-page" data-page>
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Small tools. Explicit assumptions.</p>
+            <h1>Make reporting logic easier to check.</h1>
+            <p class="hero-lede">
+              Three focused utilities for operational reporting work that often
+              starts in a spreadsheet: align periods, audit extract changes,
+              and test waitlist capacity scenarios.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#windows">Open first tool</a>
+              <a
+                class="button button-secondary"
+                href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
+                rel="noopener noreferrer"
+              >Inspect the code</a>
+            </div>
+            <p class="privacy-line">
+              <span aria-hidden="true">●</span>
+              Runs locally in your browser. No uploads, accounts, or analytics.
+            </p>
+          </div>
+          <div class="hero-proof" aria-label="Toolkit principles">
+            <div class="proof-header">
+              <span>Calculation record</span>
+              <span class="proof-status">Reviewable</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Inputs</dt>
+                <dd>Visible</dd>
+              </div>
+              <div>
+                <dt>Assumptions</dt>
+                <dd>Stated</dd>
+              </div>
+              <div>
+                <dt>Outputs</dt>
+                <dd>Exportable</dd>
+              </div>
+              <div>
+                <dt>Data transfer</dt>
+                <dd>None</dd>
+              </div>
+            </dl>
+            <div class="proof-rule">
+              <span>Purpose</span>
+              <strong>Decision support, not a black box</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-intro">
+          <div>
+            <p class="section-kicker">Included in v0.1</p>
+            <h2>One workflow, three pressure points</h2>
+          </div>
+          <p>
+            Define the period, verify what changed, then test whether capacity
+            can absorb the work. Each utility can stand alone.
+          </p>
+        </div>
+
+        <div class="tool-card-grid">
+          <article class="tool-card">
+            <div class="tool-number">01</div>
+            <p class="tool-tag">Date logic</p>
+            <h3>Reporting Window Builder</h3>
+            <p>
+              Create fiscal, rolling, custom, and like-for-like comparison
+              periods without hidden date arithmetic.
+            </p>
+            <ul>
+              <li>Inclusive day counts</li>
+              <li>Fiscal quarter alignment</li>
+              <li>Leap-year warnings</li>
+            </ul>
+            <a href="#windows">Build a reporting period <span aria-hidden="true">→</span></a>
+          </article>
+
+          <article class="tool-card featured-card">
+            <div class="tool-number">02</div>
+            <p class="tool-tag">Data quality</p>
+            <h3>Extract Change Auditor</h3>
+            <p>
+              Compare two CSV extracts in your browser and separate schema
+              drift from added, removed, and modified records.
+            </p>
+            <ul>
+              <li>Composite record keys</li>
+              <li>Duplicate-key detection</li>
+              <li>Safe CSV export</li>
+            </ul>
+            <a href="#auditor">Audit two extracts <span aria-hidden="true">→</span></a>
+          </article>
+
+          <article class="tool-card">
+            <div class="tool-number">03</div>
+            <p class="tool-tag">Operations</p>
+            <h3>Waitlist Capacity Planner</h3>
+            <p>
+              Compare current capacity with a proposed change and see the
+              implied backlog and queue-wait trajectory.
+            </p>
+            <ul>
+              <li>Current versus planned path</li>
+              <li>Transparent fluid-queue model</li>
+              <li>Required-capacity estimate</li>
+            </ul>
+            <a href="#capacity">Test a capacity plan <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+
+        <div class="boundary-panel">
+          <div>
+            <p class="section-kicker">Deliberate boundary</p>
+            <h2>Useful without pretending to be certified.</h2>
+          </div>
+          <div>
+            <p>
+              The toolkit is not a submission engine, clinical system, queueing
+              simulation, or replacement for local policy. It makes a narrow
+              set of calculations inspectable and reproducible.
+            </p>
+            <p>
+              For deterministic reporting test cases, see the companion
+              <a
+                href="https://github.com/dfrbagley-cpu/health-data-edge-cases"
+                rel="noopener noreferrer"
+              >Health Data Edge Cases project</a>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="windows" class="page tool-page" data-page hidden>
+        <header class="tool-page-header">
+          <div>
+            <p class="eyebrow">Tool 01 · Date logic</p>
+            <h1>Reporting Window Builder</h1>
+            <p>
+              Turn an as-of date into an explicit current period and a
+              defensible comparison period.
+            </p>
+          </div>
+          <div class="header-note">
+            <strong>Best for</strong>
+            <span>Operational dashboards, fiscal reporting, and partial-period comparisons</span>
+          </div>
+        </header>
+
+        <div class="workspace-grid">
+          <form id="window-form" class="input-panel" novalidate>
+            <div class="panel-heading">
+              <span class="step-badge">Inputs</span>
+              <h2>Define the period</h2>
+            </div>
+
+            <div class="field">
+              <label for="window-type">Current period</label>
+              <select id="window-type" name="type">
+                <option value="fiscal_ytd">Fiscal year to date</option>
+                <option value="fiscal_qtd">Fiscal quarter to date</option>
+                <option value="rolling">Rolling number of days</option>
+                <option value="custom">Custom start and end</option>
+              </select>
+            </div>
+
+            <div id="window-as-of-group" class="field">
+              <label for="window-as-of">As-of date</label>
+              <input id="window-as-of" name="asOf" type="date" required>
+              <small>The current period includes this date.</small>
+            </div>
+
+            <div id="window-fiscal-group" class="field">
+              <label for="window-fiscal-month">Fiscal year starts</label>
+              <select id="window-fiscal-month" name="fiscalStartMonth">
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4" selected>April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+
+            <div id="window-rolling-group" class="field" hidden>
+              <label for="window-rolling-days">Days in rolling period</label>
+              <input
+                id="window-rolling-days"
+                name="rollingDays"
+                type="number"
+                min="1"
+                max="3660"
+                step="1"
+                value="90"
+              >
+            </div>
+
+            <div id="window-custom-group" class="field-pair" hidden>
+              <div class="field">
+                <label for="window-custom-start">Custom start</label>
+                <input id="window-custom-start" name="customStart" type="date">
+              </div>
+              <div class="field">
+                <label for="window-custom-end">Custom end</label>
+                <input id="window-custom-end" name="customEnd" type="date">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="window-comparison">Comparison method</label>
+              <select id="window-comparison" name="comparisonType">
+                <option value="prior_year">Like-for-like prior year</option>
+                <option value="previous_period">Immediately preceding period</option>
+              </select>
+              <small>Both methods preserve inclusive date boundaries.</small>
+            </div>
+
+            <div id="window-error" class="form-error" role="alert" hidden></div>
+
+            <div class="form-actions">
+              <button class="button button-primary" type="submit">Build periods</button>
+              <button id="window-example" class="button button-quiet" type="button">
+                Load example
+              </button>
+            </div>
+          </form>
+
+          <section class="result-panel" aria-labelledby="window-result-title">
+            <div class="panel-heading result-heading">
+              <div>
+                <span class="step-badge">Result</span>
+                <h2 id="window-result-title" tabindex="-1">Aligned reporting windows</h2>
+              </div>
+              <span id="window-fiscal-label" class="result-context">Awaiting inputs</span>
+            </div>
+
+            <div id="window-empty" class="empty-state">
+              <div class="empty-icon" aria-hidden="true">↔</div>
+              <h3>Your dates will appear here</h3>
+              <p>
+                Choose a period and comparison method. The result will show
+                exact inclusive boundaries and flag calendar differences.
+              </p>
+            </div>
+
+            <div id="window-result" hidden>
+              <div class="period-grid">
+                <article class="period-card current-period">
+                  <p>Current period</p>
+                  <strong id="window-current-range">—</strong>
+                  <span id="window-current-days">—</span>
+                </article>
+                <article class="period-card comparison-period">
+                  <p id="window-comparison-label">Comparison period</p>
+                  <strong id="window-comparison-range">—</strong>
+                  <span id="window-comparison-days">—</span>
+                </article>
+              </div>
+
+              <div class="result-table-wrap">
+                <table class="compact-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Period</th>
+                      <th scope="col">Start</th>
+                      <th scope="col">End</th>
+                      <th scope="col">Inclusive days</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Current</th>
+                      <td id="window-current-start">—</td>
+                      <td id="window-current-end">—</td>
+                      <td id="window-current-count">—</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Comparison</th>
+                      <td id="window-compare-start">—</td>
+                      <td id="window-compare-end">—</td>
+                      <td id="window-compare-count">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div id="window-warning-box" class="warning-box" hidden>
+                <strong>Check before using</strong>
+                <ul id="window-warnings"></ul>
+              </div>
+
+              <div class="result-actions">
+                <button id="window-copy" class="button button-secondary" type="button">
+                  Copy result
+                </button>
+                <button id="window-download" class="button button-quiet" type="button">
+                  Download CSV
+                </button>
+                <span id="window-action-status" class="action-status" aria-live="polite"></span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <details class="assumption-box">
+          <summary>Calculation rules and limitations</summary>
+          <div>
+            <p>
+              Dates are calculated as calendar dates in UTC to avoid daylight-saving
+              shifts. Day counts include both the start and end date.
+            </p>
+            <p>
+              Like-for-like comparison subtracts one calendar year from each
+              boundary and clamps February 29 to February 28 when required.
+              It does not adjust for holidays, weekdays, fiscal calendars with
+              4-4-5 periods, or local reporting exclusions.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section id="auditor" class="page tool-page" data-page hidden>
+        <header class="tool-page-header">
+          <div>
+            <p class="eyebrow">Tool 02 · Data quality</p>
+            <h1>Extract Change Auditor</h1>
+            <p>
+              Compare two CSV snapshots and distinguish schema drift from
+              record-level change.
+            </p>
+          </div>
+          <div class="header-note local-note">
+            <strong>Local processing</strong>
+            <span>Selected files stay on this device and are never uploaded by the toolkit.</span>
+          </div>
+        </header>
+
+        <div class="workspace-grid auditor-grid">
+          <form id="audit-form" class="input-panel" novalidate>
+            <div class="panel-heading">
+              <span class="step-badge">Inputs</span>
+              <h2>Select two extracts</h2>
+            </div>
+
+            <div class="file-field">
+              <label for="audit-baseline">
+                <span>Baseline CSV</span>
+                <small id="audit-baseline-name">No file selected</small>
+              </label>
+              <input id="audit-baseline" type="file" accept=".csv,text/csv">
+            </div>
+
+            <div class="file-field">
+              <label for="audit-current">
+                <span>Current CSV</span>
+                <small id="audit-current-name">No file selected</small>
+              </label>
+              <input id="audit-current" type="file" accept=".csv,text/csv">
+            </div>
+
+            <div class="field">
+              <label for="audit-key-columns">Record key column(s)</label>
+              <input
+                id="audit-key-columns"
+                type="text"
+                value="record_id"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <small>Separate composite keys with commas, such as patient_id, encounter_id.</small>
+            </div>
+
+            <label class="check-field" for="audit-trim">
+              <input id="audit-trim" type="checkbox" checked>
+              <span>
+                <strong>Ignore surrounding whitespace</strong>
+                <small>Applies to keys and compared values.</small>
+              </span>
+            </label>
+
+            <div id="audit-error" class="form-error" role="alert" hidden></div>
+
+            <div class="form-actions">
+              <button class="button button-primary" type="submit">Compare extracts</button>
+              <button id="audit-example" class="button button-quiet" type="button">
+                Use synthetic example
+              </button>
+            </div>
+
+            <p class="input-limit">
+              CSV only · maximum 10 MB per file · maximum 100,000 data rows
+            </p>
+          </form>
+
+          <section class="result-panel" aria-labelledby="audit-result-title">
+            <div class="panel-heading result-heading">
+              <div>
+                <span class="step-badge">Result</span>
+                <h2 id="audit-result-title" tabindex="-1">Change summary</h2>
+              </div>
+              <span id="audit-context" class="result-context">Awaiting extracts</span>
+            </div>
+
+            <div id="audit-empty" class="empty-state">
+              <div class="empty-icon" aria-hidden="true">Δ</div>
+              <h3>Load two CSV snapshots</h3>
+              <p>
+                Use your own files or the synthetic example. Shared non-key
+                columns are compared as text after optional trimming.
+              </p>
+            </div>
+
+            <div id="audit-result" hidden>
+              <div class="metric-grid audit-metrics">
+                <article>
+                  <span>Added</span>
+                  <strong id="audit-added">0</strong>
+                  <small>records</small>
+                </article>
+                <article>
+                  <span>Removed</span>
+                  <strong id="audit-removed">0</strong>
+                  <small>records</small>
+                </article>
+                <article>
+                  <span>Changed</span>
+                  <strong id="audit-changed">0</strong>
+                  <small>records</small>
+                </article>
+                <article>
+                  <span>Changed cells</span>
+                  <strong id="audit-cells">0</strong>
+                  <small>values</small>
+                </article>
+              </div>
+
+              <div class="schema-grid">
+                <article>
+                  <h3>Schema changes</h3>
+                  <dl class="schema-list">
+                    <div>
+                      <dt>Added columns</dt>
+                      <dd id="audit-added-columns">None</dd>
+                    </div>
+                    <div>
+                      <dt>Removed columns</dt>
+                      <dd id="audit-removed-columns">None</dd>
+                    </div>
+                    <div>
+                      <dt>Type shifts</dt>
+                      <dd id="audit-type-changes">None detected</dd>
+                    </div>
+                  </dl>
+                </article>
+                <article>
+                  <h3>Key integrity</h3>
+                  <dl class="schema-list">
+                    <div>
+                      <dt>Ambiguous duplicate keys</dt>
+                      <dd id="audit-duplicates">0</dd>
+                    </div>
+                    <div>
+                      <dt>Rows with blank keys</dt>
+                      <dd id="audit-missing-keys">0</dd>
+                    </div>
+                    <div>
+                      <dt>Unchanged records</dt>
+                      <dd id="audit-unchanged">0</dd>
+                    </div>
+                  </dl>
+                </article>
+              </div>
+
+              <div id="audit-warning-box" class="warning-box" hidden>
+                <strong>Excluded from record comparison</strong>
+                <ul id="audit-warnings"></ul>
+              </div>
+
+              <div class="table-heading">
+                <div>
+                  <h3>Changed-record preview</h3>
+                  <p id="audit-preview-count">Showing material differences</p>
+                </div>
+                <button id="audit-download" class="button button-quiet" type="button">
+                  Download change log
+                </button>
+              </div>
+              <div class="result-table-wrap tall-table">
+                <table class="compact-table change-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Key</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Changed fields</th>
+                      <th scope="col">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody id="audit-diff-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <details class="assumption-box">
+          <summary>Comparison rules and limitations</summary>
+          <div>
+            <p>
+              Added or removed schema columns are reported separately and do
+              not make every record appear changed. Only columns present in
+              both files are compared at record level.
+            </p>
+            <p>
+              Duplicate and blank keys are excluded rather than guessed.
+              Values are compared as text; inferred type shifts are screening
+              signals, not a formal schema. CSV exports prefix spreadsheet
+              formula characters to reduce formula-injection risk.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section id="capacity" class="page tool-page" data-page hidden>
+        <header class="tool-page-header">
+          <div>
+            <p class="eyebrow">Tool 03 · Operations</p>
+            <h1>Waitlist Capacity Planner</h1>
+            <p>
+              Make the backlog consequence of demand and service capacity
+              visible before committing to a plan.
+            </p>
+          </div>
+          <div class="header-note caution-note">
+            <strong>Planning proxy</strong>
+            <span>This is a deterministic fluid-queue model, not a patient-level wait prediction.</span>
+          </div>
+        </header>
+
+        <div class="workspace-grid capacity-grid">
+          <form id="capacity-form" class="input-panel" novalidate>
+            <div class="panel-heading">
+              <span class="step-badge">Inputs</span>
+              <h2>Set the scenario</h2>
+            </div>
+
+            <div class="field-pair">
+              <div class="field">
+                <label for="capacity-backlog">Current waitlist</label>
+                <input id="capacity-backlog" type="number" min="0" step="1" value="240">
+                <small>People waiting now</small>
+              </div>
+              <div class="field">
+                <label for="capacity-arrivals">New referrals / week</label>
+                <input id="capacity-arrivals" type="number" min="0" step="0.1" value="42">
+                <small>Average arrivals</small>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="capacity-current">Current completions / week</label>
+              <input id="capacity-current" type="number" min="0" step="0.1" value="38">
+            </div>
+
+            <div class="field-pair">
+              <div class="field">
+                <label for="capacity-change-week">Change begins in week</label>
+                <input id="capacity-change-week" type="number" min="1" max="104" step="1" value="5">
+              </div>
+              <div class="field">
+                <label for="capacity-proposed">Proposed completions / week</label>
+                <input id="capacity-proposed" type="number" min="0" step="0.1" value="50">
+              </div>
+            </div>
+
+            <div class="field-pair">
+              <div class="field">
+                <label for="capacity-horizon">Planning horizon</label>
+                <div class="input-suffix">
+                  <input id="capacity-horizon" type="number" min="1" max="104" step="1" value="26">
+                  <span>weeks</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="capacity-target-wait">Target queue wait</label>
+                <div class="input-suffix">
+                  <input id="capacity-target-wait" type="number" min="0" step="0.1" value="4">
+                  <span>weeks</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="capacity-error" class="form-error" role="alert" hidden></div>
+
+            <div class="form-actions">
+              <button class="button button-primary" type="submit">Run scenario</button>
+              <button id="capacity-reset" class="button button-quiet" type="button">
+                Reset example
+              </button>
+            </div>
+          </form>
+
+          <section class="result-panel" aria-labelledby="capacity-result-title">
+            <div class="panel-heading result-heading">
+              <div>
+                <span class="step-badge">Result</span>
+                <h2 id="capacity-result-title" tabindex="-1">Capacity outlook</h2>
+              </div>
+              <span id="capacity-status" class="status-pill">Calculating</span>
+            </div>
+
+            <div class="metric-grid capacity-metrics">
+              <article>
+                <span>Planned backlog</span>
+                <strong id="capacity-plan-backlog">—</strong>
+                <small id="capacity-plan-backlog-note">at horizon</small>
+              </article>
+              <article>
+                <span>Planned wait proxy</span>
+                <strong id="capacity-plan-wait">—</strong>
+                <small>backlog ÷ capacity</small>
+              </article>
+              <article>
+                <span>No-change backlog</span>
+                <strong id="capacity-current-backlog">—</strong>
+                <small>at horizon</small>
+              </article>
+              <article>
+                <span>Capacity required</span>
+                <strong id="capacity-required">—</strong>
+                <small id="capacity-required-note">after change</small>
+              </article>
+            </div>
+
+            <div class="chart-panel">
+              <div class="chart-heading">
+                <div>
+                  <h3>Projected waitlist</h3>
+                  <p>People remaining after each week</p>
+                </div>
+                <div class="chart-legend" aria-label="Chart legend">
+                  <span class="legend-current">Current capacity</span>
+                  <span class="legend-plan">Proposed plan</span>
+                  <span class="legend-target">Target line</span>
+                </div>
+              </div>
+              <svg
+                id="capacity-chart"
+                viewBox="0 0 720 300"
+                role="img"
+                aria-label="Projected waitlist under current capacity and the proposed plan"
+              ></svg>
+            </div>
+
+            <div class="table-heading">
+              <div>
+                <h3>Milestone view</h3>
+                <p id="capacity-target-note">Target assessment</p>
+              </div>
+              <button id="capacity-download" class="button button-quiet" type="button">
+                Download projection
+              </button>
+            </div>
+            <div class="result-table-wrap">
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Week</th>
+                    <th scope="col">Current backlog</th>
+                    <th scope="col">Planned backlog</th>
+                    <th scope="col">Planned wait</th>
+                  </tr>
+                </thead>
+                <tbody id="capacity-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <details class="assumption-box">
+          <summary>Model assumptions and limitations</summary>
+          <div>
+            <p>
+              The model adds a constant average number of referrals each week,
+              serves up to the available capacity, and carries remaining work
+              forward. The wait proxy is backlog divided by that week's service
+              capacity.
+            </p>
+            <p>
+              It assumes a single queue, no prioritization, no cancellations,
+              no seasonality, no capacity variation, and no differences in
+              case complexity. Validate any decision with local distributions,
+              staffing constraints, and patient-level flow.
+            </p>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>Healthcare Reporting Toolkit</strong>
+        <span>Transparent utilities for operational reporting</span>
+      </div>
+      <div class="footer-links">
+        <a
+          href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
+          rel="noopener noreferrer"
+        >Source</a>
+        <a
+          href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
+          rel="noopener noreferrer"
+        >Apache 2.0</a>
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+
+    <noscript>
+      <div class="noscript-message">
+        This toolkit requires JavaScript to perform local calculations.
+      </div>
+    </noscript>
+  </body>
+</html>
