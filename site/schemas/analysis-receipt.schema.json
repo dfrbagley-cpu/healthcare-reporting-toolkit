@@ -93,7 +93,8 @@
           "enum": [
             "reporting-window",
             "extract-change-auditor",
-            "waitlist-capacity-planner"
+            "waitlist-capacity-planner",
+            "reporting-results-checker"
           ]
         },
         "name": {
@@ -136,7 +137,9 @@
         "role": {
           "enum": [
             "baseline",
-            "current"
+            "current",
+            "actual_metrics",
+            "actual_quality"
           ]
         },
         "row_count": {

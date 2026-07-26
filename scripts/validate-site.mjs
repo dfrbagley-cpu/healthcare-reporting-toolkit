@@ -43,9 +43,14 @@ check("required public files exist", () => {
     join(siteRoot, "favicon.svg"),
     join(siteRoot, "social-card.png"),
     receiptSchemaPath,
+    join(siteRoot, "contracts", "catalog-v1.json"),
+    join(siteRoot, "js", "data", "edge-case-contracts.js"),
+    join(siteRoot, "js", "tools", "conformance-checker.js"),
+    join(siteRoot, "js", "views", "conformance-checker.js"),
     join(projectRoot, "README.md"),
     join(projectRoot, "SECURITY.md"),
-    join(projectRoot, "CONTRIBUTING.md")
+    join(projectRoot, "CONTRIBUTING.md"),
+    join(projectRoot, "docs", "CONFORMANCE_CHECKER.md")
   ]) {
     assert.equal(statSync(path).isFile(), true, `Missing ${relative(projectRoot, path)}`);
   }
@@ -58,7 +63,12 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /<a class="skip-link" href="#main-content">/);
   assert.match(html, /<main id="main-content"/);
-  assert.equal((html.match(/<h1\b/g) ?? []).length, 4);
+  assert.equal((html.match(/<h1\b/g) ?? []).length, 5);
+  assert.match(html, /href="#validate" data-route-link="validate"/);
+  assert.match(html, /id="checker-form"/);
+  assert.match(html, /id="checker-diagnostic-body"/);
+  assert.match(html, /Five-minute tutorial: fail, diagnose, and correct/);
+  assert.match(html, /The detailed CSV can contain operational keys and values/);
 });
 
 check("sharing metadata identifies the canonical live site", () => {
@@ -95,16 +105,22 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
     "window-receipt",
     "audit-receipt",
     "capacity-receipt",
+    "checker-receipt",
     "window-action-status",
     "audit-action-status",
-    "capacity-action-status"
+    "capacity-action-status",
+    "checker-action-status"
   ]) {
     assert.match(html, new RegExp(`\\sid="${id}"`));
   }
   assert.equal(
     receiptSchema.properties.tool.properties.id.enum.length,
-    3,
-    "Receipt schema must cover exactly the three published tools"
+    4,
+    "Receipt schema must cover exactly the four published tools"
+  );
+  assert.deepEqual(
+    receiptSchema.$defs.sourceFingerprint.properties.role.enum,
+    ["baseline", "current", "actual_metrics", "actual_quality"]
   );
 });
 

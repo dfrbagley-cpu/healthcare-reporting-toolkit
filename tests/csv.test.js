@@ -30,6 +30,23 @@ test("pads missing trailing values and skips blank lines", () => {
   ]);
 });
 
+test("strict mode preserves exact headers and rejects ragged rows", () => {
+  const parsed = parseCsv(" first,second\none,two\n", {
+    trimHeaders: false,
+    allowMissingTrailingValues: false
+  });
+  assert.deepEqual(parsed.headers, [" first", "second"]);
+
+  assert.throws(
+    () =>
+      parseCsv("first,second\none\n", {
+        trimHeaders: false,
+        allowMissingTrailingValues: false
+      }),
+    /fewer values/
+  );
+});
+
 test("rejects malformed headers and rows", () => {
   assert.throws(() => parseCsv("id,id\n1,2\n"), /unique/);
   assert.throws(() => parseCsv("id,\n1,2\n"), /must have a header/);

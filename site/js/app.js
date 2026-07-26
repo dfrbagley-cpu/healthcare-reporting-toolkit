@@ -20,10 +20,17 @@ import {
 } from "./tools/extract-auditor.js";
 import { buildReportingWindow } from "./tools/reporting-window.js";
 import { calculateCapacityPlan } from "./tools/waitlist-planner.js";
+import { initializeConformanceChecker } from "./views/conformance-checker.js";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_RECORDS = 100_000;
-const ROUTES = new Set(["overview", "windows", "auditor", "capacity"]);
+const ROUTES = new Set([
+  "overview",
+  "windows",
+  "auditor",
+  "capacity",
+  "validate"
+]);
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 const windowState = { inputs: null, result: null };
@@ -40,6 +47,7 @@ initializeNavigation();
 initializeWindowTool();
 initializeAuditTool();
 initializeCapacityTool();
+initializeConformanceChecker();
 
 function initializeNavigation() {
   const showRoute = () => {

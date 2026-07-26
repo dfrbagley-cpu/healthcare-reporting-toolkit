@@ -33,19 +33,24 @@
 
   <g transform="translate(72 485)" font-family="Arial, Helvetica, sans-serif">
     <g>
-      <rect width="290" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
+      <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
       <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">01 · PERIODS</text>
-      <text x="22" y="55" fill="#ffffff" font-size="18">Align reporting windows</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Align reporting windows</text>
     </g>
-    <g transform="translate(310)">
-      <rect width="290" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
+    <g transform="translate(270)">
+      <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
       <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">02 · EXTRACTS</text>
-      <text x="22" y="55" fill="#ffffff" font-size="18">Audit CSV changes</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Audit CSV changes</text>
     </g>
-    <g transform="translate(620)">
-      <rect width="290" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
+    <g transform="translate(540)">
+      <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
       <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">03 · CAPACITY</text>
-      <text x="22" y="55" fill="#ffffff" font-size="18">Test waitlist scenarios</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Test waitlist scenarios</text>
+    </g>
+    <g transform="translate(810)">
+      <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
+      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">04 · VALIDATE</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Check result contracts</text>
     </g>
   </g>
 

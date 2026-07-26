@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   canonicalJsonStringify,
   createCapacityPlanReceipt,
+  createConformanceCheckReceipt,
   createExtractAuditReceipt,
   createReportingWindowReceipt,
   RECEIPT_SCHEMA_URL,
@@ -11,6 +12,7 @@ import {
   sha256Hex,
   TOOLKIT_VERSION
 } from "../site/js/lib/analysis-receipt.js";
+import { CONFORMANCE_CATALOG } from "../site/js/data/edge-case-contracts.js";
 import { parseCsv } from "../site/js/lib/csv.js";
 import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "../site/js/samples.js";
 import { auditExtracts } from "../site/js/tools/extract-auditor.js";
@@ -230,4 +232,95 @@ test("capacity receipts represent an infinite wait proxy without non-finite JSON
   });
   assert.equal(serialized.includes("Infinity"), false);
   assert.equal(receipt.warnings.length, 2);
+});
+
+test("conformance receipts keep provenance and aggregates but omit diagnostics", async () => {
+  const result = {
+    caseId: "unmapped-program-retention",
+    passed: false,
+    summary: {
+      expectationCount: 13,
+      matched: 10,
+      mismatchCount: 3,
+      missing: 1,
+      unexpected: 1,
+      value: 1
+    },
+    diagnostics: [
+      {
+        resultType: "metric",
+        kind: "value",
+        key: ["PRIVATE-PERIOD", "PRIVATE-METRIC"],
+        expected: "PRIVATE-EXPECTED",
+        actual: "PRIVATE-ACTUAL"
+      }
+    ]
+  };
+  const common = {
+    result,
+    catalog: CONFORMANCE_CATALOG,
+    metricsEvidence: {
+      sha256: "c".repeat(64),
+      byteCount: 200,
+      rowCount: 7,
+      columnCount: 3,
+      filename: "PRIVATE-METRICS.csv"
+    },
+    qualityEvidence: {
+      sha256: "d".repeat(64),
+      byteCount: 150,
+      rowCount: 6,
+      columnCount: 2,
+      filename: "PRIVATE-QUALITY.csv"
+    },
+    generatedAt: FIRST_TIME
+  };
+  const receipt = await createConformanceCheckReceipt(common);
+  const serialized = canonicalJsonStringify(receipt);
+
+  assert.equal(receipt.tool.id, "reporting-results-checker");
+  assert.equal(receipt.inputs.case_id, "unmapped-program-retention");
+  assert.equal(
+    receipt.inputs.contract_catalog.catalog_digest,
+    CONFORMANCE_CATALOG.catalog_digest
+  );
+  assert.deepEqual(
+    receipt.sources.map((source) => source.role),
+    ["actual_metrics", "actual_quality"]
+  );
+  assert.deepEqual(receipt.outputs.summary, {
+    expectation_count: 13,
+    matched: 10,
+    mismatch_count: 3,
+    missing: 1,
+    unexpected: 1,
+    value: 1
+  });
+  for (const privateValue of [
+    "PRIVATE-PERIOD",
+    "PRIVATE-METRIC",
+    "PRIVATE-EXPECTED",
+    "PRIVATE-ACTUAL",
+    "PRIVATE-METRICS.csv",
+    "PRIVATE-QUALITY.csv"
+  ]) {
+    assert.equal(serialized.includes(privateValue), false, privateValue);
+  }
+
+  const changedSource = await createConformanceCheckReceipt({
+    ...common,
+    metricsEvidence: {
+      ...common.metricsEvidence,
+      sha256: "e".repeat(64)
+    }
+  });
+  const changedCatalog = await createConformanceCheckReceipt({
+    ...common,
+    catalog: {
+      ...CONFORMANCE_CATALOG,
+      catalog_digest: `sha256:${"f".repeat(64)}`
+    }
+  });
+  assert.notEqual(receipt.calculation_digest, changedSource.calculation_digest);
+  assert.notEqual(receipt.calculation_digest, changedCatalog.calculation_digest);
 });

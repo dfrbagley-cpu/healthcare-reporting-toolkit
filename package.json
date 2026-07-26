@@ -1,6 +1,6 @@
 {
   "name": "healthcare-reporting-toolkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Open browser-based tools for reliable healthcare operational reporting.",
@@ -8,7 +8,8 @@
   "scripts": {
     "test": "node --test",
     "check": "node scripts/validate-site.mjs",
-    "validate": "npm run test && npm run check"
+    "check:contract": "node scripts/vendor-edge-contract.mjs --check site/contracts/catalog-v1.json",
+    "validate": "npm run test && npm run check && npm run check:contract"
   },
   "engines": {
     "node": ">=20"

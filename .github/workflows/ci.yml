@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  EDGE_CONTRACT_RELEASE: https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0
+  EDGE_CONTRACT_URL: https://raw.githubusercontent.com/dfrbagley-cpu/health-data-edge-cases/v0.2.0/docs/contracts/catalog-v1.json
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -29,3 +33,21 @@ jobs:
 
       - name: Run deterministic validation
         run: npm run validate
+
+      - name: Verify pinned edge-suite release catalog
+        if: matrix.node-version == 24
+        env:
+          CATALOG_PATH: ${{ runner.temp }}/health-data-edge-cases-v0.2.0-catalog.json
+        run: |
+          set -euo pipefail
+          echo "Verifying catalog published by $EDGE_CONTRACT_RELEASE"
+          curl \
+            --fail \
+            --location \
+            --proto '=https' \
+            --silent \
+            --show-error \
+            --tlsv1.2 \
+            --output "$CATALOG_PATH" \
+            "$EDGE_CONTRACT_URL"
+          node scripts/vendor-edge-contract.mjs --check "$CATALOG_PATH"

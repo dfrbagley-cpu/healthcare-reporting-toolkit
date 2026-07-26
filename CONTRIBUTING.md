@@ -13,11 +13,16 @@ are welcome.
 5. Explain any changed assumption in the user interface and documentation.
 6. Version the receipt schema when a receipt field changes incompatibly, and
    preserve the extract-receipt privacy boundary.
+7. Do not edit the bundled edge-case catalog or browser module by hand. Update
+   the canonical catalog in Health Data Edge Cases, then run the vendoring
+   script against that versioned generated artifact.
 
 ## Design principles
 
 - Prefer transparent calculations over hidden heuristics.
 - Keep file processing local to the browser.
+- Keep expected conformance contracts synthetic, versioned, and owned by the
+  companion edge-case repository.
 - Add complexity only when it changes a decision or prevents a material error.
 - Do not add authentication, telemetry, or remote data storage.
 - Treat outputs as decision support, not certified submissions or clinical advice.
