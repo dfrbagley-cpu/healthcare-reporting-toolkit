@@ -43,10 +43,32 @@ Then open `http://localhost:8000`.
 - A restrictive Content Security Policy disables network connections from the application.
 - Downloaded CSV change logs protect leading spreadsheet-formula characters.
 - Duplicate and missing record keys are excluded rather than guessed.
+- Extract analysis receipts contain source fingerprints and aggregate findings,
+  but omit filenames, column names, row keys, and cell values.
 
 These controls do not override an organization's privacy, retention, security,
 or approved-software policies. Inspect and approve the code and deployment
 before using a local copy with sensitive information.
+
+## Analysis receipts
+
+Every tool can download a versioned JSON analysis receipt. A receipt records
+the normalized inputs, aggregate outputs, warnings, calculation assumptions,
+toolkit version, and a deterministic calculation digest. The public
+[JSON Schema](site/schemas/analysis-receipt.schema.json) defines the contract.
+
+For extract audits, SHA-256 fingerprints are calculated from the original file
+bytes in the browser. The receipt includes those fingerprints plus file size,
+row count, and column count; it deliberately excludes filenames, headers,
+record keys, and cell values. The ordered key-column choice is represented by
+its own fingerprint so a configuration change produces a different calculation
+digest without exposing the column names. The separate change-log CSV does
+contain row-level differences and must be handled according to the source
+data's sensitivity.
+
+A receipt and its hashes support repeatability; they do not prove source
+accuracy, authorship, approval, or when a calculation occurred. Review a
+receipt before sharing it because even aggregate metadata can be sensitive.
 
 ## Calculation boundaries
 
@@ -84,10 +106,11 @@ integrity checks, privacy-boundary checks, and network-primitive checks.
 site/
   index.html                  Public application
   styles.css                  Responsive visual system
-  js/lib/                     Date and CSV utilities
+  js/lib/                     Date, CSV, receipt, and hashing utilities
   js/tools/                   Pure calculation modules
   js/app.js                   Browser interface
   examples/                   Synthetic CSV snapshots
+  schemas/                    Published analysis-receipt JSON Schema
 tests/                        Deterministic unit tests
 scripts/validate-site.mjs     Static and boundary validation
 .github/workflows/            CI and GitHub Pages deployment

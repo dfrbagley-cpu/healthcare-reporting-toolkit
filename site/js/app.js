@@ -6,6 +6,13 @@ import {
   formatLongDate,
   parseIsoDate
 } from "./lib/date-utils.js";
+import {
+  canonicalJsonStringify,
+  createCapacityPlanReceipt,
+  createExtractAuditReceipt,
+  createReportingWindowReceipt,
+  sha256Hex
+} from "./lib/analysis-receipt.js";
 import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "./samples.js";
 import {
   auditExtracts,
@@ -19,8 +26,13 @@ const MAX_RECORDS = 100_000;
 const ROUTES = new Set(["overview", "windows", "auditor", "capacity"]);
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-const windowState = { result: null };
-const auditState = { baseline: null, current: null, audit: null };
+const windowState = { inputs: null, result: null };
+const auditState = {
+  baseline: null,
+  current: null,
+  audit: null,
+  settings: null
+};
 const auditLoadVersions = { baseline: 0, current: 0 };
 const capacityState = { result: null };
 
@@ -74,7 +86,7 @@ function initializeWindowTool() {
     event.preventDefault();
     try {
       clearError("window-error");
-      const result = buildReportingWindow({
+      const inputs = {
         type: typeInput.value,
         asOf: byId("window-as-of").value,
         fiscalStartMonth: Number(byId("window-fiscal-month").value),
@@ -82,7 +94,9 @@ function initializeWindowTool() {
         customStart: byId("window-custom-start").value,
         customEnd: byId("window-custom-end").value,
         comparisonType: byId("window-comparison").value
-      });
+      };
+      const result = buildReportingWindow(inputs);
+      windowState.inputs = inputs;
       windowState.result = result;
       renderWindowResult(result);
     } catch (error) {
@@ -147,6 +161,22 @@ function initializeWindowTool() {
     downloadText("reporting-windows.csv", csv, "text/csv;charset=utf-8");
     announce("window-action-status", "Downloaded");
   });
+
+  byId("window-receipt").addEventListener("click", async () => {
+    const result = windowState.result;
+    const inputs = windowState.inputs;
+    if (!result || !inputs) {
+      return;
+    }
+    await downloadAnalysisReceipt({
+      buttonId: "window-receipt",
+      filename: "reporting-window-analysis-receipt.json",
+      isCurrent: () =>
+        windowState.result === result && windowState.inputs === inputs,
+      makeReceipt: () => createReportingWindowReceipt({ inputs, result }),
+      statusId: "window-action-status"
+    });
+  });
 }
 
 function renderWindowResult(result) {
@@ -173,6 +203,7 @@ function renderWindowResult(result) {
 
   renderList("window-warnings", result.warnings);
   byId("window-warning-box").hidden = result.warnings.length === 0;
+  byId("window-receipt").disabled = false;
   byId("window-result-title").focus();
 }
 
@@ -213,27 +244,56 @@ function initializeAuditTool() {
         trimWhitespace: byId("audit-trim").checked
       });
       auditState.audit = audit;
+      auditState.settings = {
+        trimWhitespace: byId("audit-trim").checked
+      };
       renderAuditResult(audit);
     } catch (error) {
       showError("audit-error", error);
     }
   });
 
-  byId("audit-example").addEventListener("click", () => {
+  byId("audit-example").addEventListener("click", async () => {
+    const baselineVersion = auditLoadVersions.baseline + 1;
+    const currentVersion = auditLoadVersions.current + 1;
+    auditLoadVersions.baseline = baselineVersion;
+    auditLoadVersions.current = currentVersion;
     try {
       clearError("audit-error");
-      auditLoadVersions.baseline += 1;
-      auditLoadVersions.current += 1;
       invalidateAuditResult();
       baselineInput.value = "";
       currentInput.value = "";
+      const baselineBytes = new TextEncoder().encode(BASELINE_SAMPLE);
+      const currentBytes = new TextEncoder().encode(CURRENT_SAMPLE);
+      const [baselineHash, currentHash] = await Promise.all([
+        sha256Hex(baselineBytes),
+        sha256Hex(currentBytes)
+      ]);
+      if (
+        auditLoadVersions.baseline !== baselineVersion ||
+        auditLoadVersions.current !== currentVersion
+      ) {
+        return;
+      }
+      const baselineData = parseCsv(BASELINE_SAMPLE);
+      const currentData = parseCsv(CURRENT_SAMPLE);
       auditState.baseline = {
         name: "baseline.csv (synthetic)",
-        data: parseCsv(BASELINE_SAMPLE)
+        data: baselineData,
+        evidence: extractEvidence(
+          baselineHash,
+          baselineBytes.byteLength,
+          baselineData
+        )
       };
       auditState.current = {
         name: "current.csv (synthetic)",
-        data: parseCsv(CURRENT_SAMPLE)
+        data: currentData,
+        evidence: extractEvidence(
+          currentHash,
+          currentBytes.byteLength,
+          currentData
+        )
       };
       setText(
         "audit-baseline-name",
@@ -243,7 +303,12 @@ function initializeAuditTool() {
       byId("audit-key-columns").value = "record_id";
       form.requestSubmit();
     } catch (error) {
-      showError("audit-error", error);
+      if (
+        auditLoadVersions.baseline === baselineVersion &&
+        auditLoadVersions.current === currentVersion
+      ) {
+        showError("audit-error", error);
+      }
     }
   });
 
@@ -259,6 +324,34 @@ function initializeAuditTool() {
       "after"
     ]);
     downloadText("extract-change-log.csv", csv, "text/csv;charset=utf-8");
+    announce("audit-action-status", "Change log downloaded");
+  });
+
+  byId("audit-receipt").addEventListener("click", async () => {
+    const audit = auditState.audit;
+    const baseline = auditState.baseline;
+    const current = auditState.current;
+    const settings = auditState.settings;
+    if (!audit || !baseline?.evidence || !current?.evidence || !settings) {
+      return;
+    }
+    await downloadAnalysisReceipt({
+      buttonId: "audit-receipt",
+      filename: "extract-audit-analysis-receipt.json",
+      isCurrent: () =>
+        auditState.audit === audit &&
+        auditState.baseline === baseline &&
+        auditState.current === current &&
+        auditState.settings === settings,
+      makeReceipt: () =>
+        createExtractAuditReceipt({
+          audit,
+          baselineEvidence: baseline.evidence,
+          currentEvidence: current.evidence,
+          trimWhitespace: settings.trimWhitespace
+        }),
+      statusId: "audit-action-status"
+    });
   });
 }
 
@@ -277,9 +370,8 @@ async function loadAuditFile(file, stateKey, nameElementId) {
     if (file.size > MAX_FILE_BYTES) {
       throw new Error(`${file.name} is larger than the 10 MB limit.`);
     }
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(
-      await file.arrayBuffer()
-    );
+    const bytes = await file.arrayBuffer();
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     if (auditLoadVersions[stateKey] !== loadVersion) {
       return;
     }
@@ -287,7 +379,15 @@ async function loadAuditFile(file, stateKey, nameElementId) {
     if (data.records.length > MAX_RECORDS) {
       throw new Error(`${file.name} contains more than 100,000 data rows.`);
     }
-    auditState[stateKey] = { name: file.name, data };
+    const hash = await sha256Hex(bytes);
+    if (auditLoadVersions[stateKey] !== loadVersion) {
+      return;
+    }
+    auditState[stateKey] = {
+      name: file.name,
+      data,
+      evidence: extractEvidence(hash, bytes.byteLength, data)
+    };
     setText(nameElementId, describeExtract(auditState[stateKey]));
   } catch (error) {
     if (auditLoadVersions[stateKey] !== loadVersion) {
@@ -339,6 +439,7 @@ function renderAuditResult(audit) {
   setText("audit-unchanged", formatNumber(audit.summary.unchanged));
   renderList("audit-warnings", audit.warnings);
   byId("audit-warning-box").hidden = audit.warnings.length === 0;
+  byId("audit-receipt").disabled = false;
 
   const differences = audit.rowDiffs.filter(
     (difference) => difference.status !== "unchanged"
@@ -480,6 +581,20 @@ function initializeCapacityTool() {
       "planned_wait_proxy_weeks"
     ]);
     downloadText("waitlist-capacity-projection.csv", csv, "text/csv;charset=utf-8");
+    announce("capacity-action-status", "Projection downloaded");
+  });
+  byId("capacity-receipt").addEventListener("click", async () => {
+    const result = capacityState.result;
+    if (!result) {
+      return;
+    }
+    await downloadAnalysisReceipt({
+      buttonId: "capacity-receipt",
+      filename: "waitlist-capacity-analysis-receipt.json",
+      isCurrent: () => capacityState.result === result,
+      makeReceipt: () => createCapacityPlanReceipt({ result }),
+      statusId: "capacity-action-status"
+    });
   });
 
   run();
@@ -538,6 +653,8 @@ function renderCapacityResult(result, focusResult = false) {
 
   drawCapacityChart(result);
   renderCapacityTable(result);
+  byId("capacity-download").disabled = false;
+  byId("capacity-receipt").disabled = false;
   if (focusResult) {
     byId("capacity-result-title").focus();
   }
@@ -765,6 +882,15 @@ function describeExtract(extract) {
   return `${extract.name} · ${formatNumber(extract.data.records.length)} rows · ${formatNumber(extract.data.headers.length)} columns`;
 }
 
+function extractEvidence(sha256, byteCount, data) {
+  return {
+    sha256,
+    byteCount,
+    rowCount: data.records.length,
+    columnCount: data.headers.length
+  };
+}
+
 function longDate(isoDate) {
   return formatLongDate(parseIsoDate(isoDate));
 }
@@ -813,20 +939,25 @@ function renderList(id, items) {
 }
 
 function invalidateWindowResult() {
+  windowState.inputs = null;
   windowState.result = null;
   clearError("window-error");
   byId("window-result").hidden = true;
   byId("window-empty").hidden = false;
+  byId("window-receipt").disabled = true;
   setText("window-fiscal-label", "Awaiting inputs");
   setText("window-action-status", "");
 }
 
 function invalidateAuditResult() {
   auditState.audit = null;
+  auditState.settings = null;
   clearError("audit-error");
   byId("audit-result").hidden = true;
   byId("audit-empty").hidden = false;
+  byId("audit-receipt").disabled = true;
   setText("audit-context", "Awaiting extracts");
+  setText("audit-action-status", "");
 }
 
 function invalidateCapacityResult() {
@@ -846,8 +977,43 @@ function invalidateCapacityResult() {
   setText("capacity-plan-backlog-note", "run the scenario");
   setText("capacity-required-note", "run the scenario");
   setText("capacity-target-note", "Run the scenario to update the result.");
+  byId("capacity-download").disabled = true;
+  byId("capacity-receipt").disabled = true;
+  setText("capacity-action-status", "");
   byId("capacity-chart").replaceChildren();
   byId("capacity-table-body").replaceChildren();
+}
+
+async function downloadAnalysisReceipt({
+  buttonId,
+  filename,
+  isCurrent,
+  makeReceipt,
+  statusId
+}) {
+  const button = byId(buttonId);
+  button.disabled = true;
+  setText(statusId, "Preparing receipt…");
+  try {
+    const receipt = await makeReceipt();
+    if (!isCurrent()) {
+      return;
+    }
+    downloadText(
+      filename,
+      canonicalJsonStringify(receipt, { pretty: true }),
+      "application/json;charset=utf-8"
+    );
+    announce(statusId, "Analysis receipt downloaded");
+  } catch {
+    if (isCurrent()) {
+      announce(statusId, "Analysis receipt unavailable");
+    }
+  } finally {
+    if (isCurrent()) {
+      button.disabled = false;
+    }
+  }
 }
 
 function announce(id, message) {

@@ -394,6 +394,9 @@
                 <button id="window-download" class="button button-quiet" type="button">
                   Download CSV
                 </button>
+                <button id="window-receipt" class="button button-quiet" type="button">
+                  Download analysis receipt
+                </button>
                 <span id="window-action-status" class="action-status" aria-live="polite"></span>
               </div>
             </div>
@@ -572,6 +575,20 @@
               <div id="audit-warning-box" class="warning-box" hidden>
                 <strong>Excluded from record comparison</strong>
                 <ul id="audit-warnings"></ul>
+              </div>
+
+              <div class="receipt-panel">
+                <div>
+                  <strong>Reproducibility record</strong>
+                  <span>
+                    Includes source fingerprints and aggregate findings, never
+                    filenames, row keys, or cell values.
+                  </span>
+                </div>
+                <button id="audit-receipt" class="button button-secondary" type="button">
+                  Download analysis receipt
+                </button>
+                <span id="audit-action-status" class="action-status" aria-live="polite"></span>
               </div>
 
               <div class="table-heading">
@@ -757,9 +774,15 @@
                 <h3>Milestone view</h3>
                 <p id="capacity-target-note">Target assessment</p>
               </div>
-              <button id="capacity-download" class="button button-quiet" type="button">
-                Download projection
-              </button>
+              <div class="table-action-group">
+                <button id="capacity-download" class="button button-quiet" type="button">
+                  Download projection
+                </button>
+                <button id="capacity-receipt" class="button button-quiet" type="button">
+                  Download analysis receipt
+                </button>
+                <span id="capacity-action-status" class="action-status" aria-live="polite"></span>
+              </div>
             </div>
             <div class="result-table-wrap">
               <table class="compact-table">
@@ -815,7 +838,7 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.1.0</span>
+        <span>v0.2.0</span>
       </div>
     </footer>
 

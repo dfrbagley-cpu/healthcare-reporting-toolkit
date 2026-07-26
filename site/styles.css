@@ -350,6 +350,15 @@ main {
   transform: translateY(-1px);
 }
 
+.button:disabled {
+  color: #6c7e84;
+  background: #eef2f1;
+  border-color: var(--line);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .button-primary {
   color: white;
   background: var(--teal);
@@ -1098,6 +1107,52 @@ input[type="file"]::file-selector-button {
   font-weight: 700;
 }
 
+.receipt-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem 1rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  background: var(--blue-pale);
+  border: 1px solid #cbdde4;
+  border-radius: 0.65rem;
+}
+
+.receipt-panel strong,
+.receipt-panel span {
+  display: block;
+}
+
+.receipt-panel strong {
+  color: var(--navy);
+  font-size: 0.8rem;
+}
+
+.receipt-panel > div span {
+  margin-top: 0.2rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.receipt-panel .action-status {
+  grid-column: 1 / -1;
+}
+
+.table-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.table-action-group .button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.78rem;
+}
+
 .assumption-box {
   margin-top: 1.1rem;
   background: white;
@@ -1567,6 +1622,10 @@ input[type="file"]::file-selector-button {
     flex-direction: column;
   }
 
+  .table-action-group {
+    justify-content: flex-start;
+  }
+
   .chart-legend {
     justify-content: flex-start;
   }
@@ -1609,6 +1668,20 @@ input[type="file"]::file-selector-button {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .receipt-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-panel .action-status {
+    grid-column: auto;
+  }
+
+  .table-action-group {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1625,6 +1698,8 @@ input[type="file"]::file-selector-button {
   .site-footer,
   .input-panel,
   .result-actions,
+  .receipt-panel,
+  .table-action-group,
   .button,
   .assumption-box:not([open]) {
     display: none !important;
