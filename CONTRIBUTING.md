@@ -11,6 +11,8 @@ are welcome.
 3. Add tests that state the expected result.
 4. Run `npm run validate`.
 5. Explain any changed assumption in the user interface and documentation.
+6. Version the receipt schema when a receipt field changes incompatibly, and
+   preserve the extract-receipt privacy boundary.
 
 ## Design principles
 

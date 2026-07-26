@@ -3,11 +3,29 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  RECEIPT_SCHEMA_URL,
+  RECEIPT_SCHEMA_VERSION,
+  TOOLKIT_VERSION
+} from "../site/js/lib/analysis-receipt.js";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const siteRoot = join(projectRoot, "site");
 const htmlPath = join(siteRoot, "index.html");
 const html = readFileSync(htmlPath, "utf8");
+const receiptSchemaPath = join(
+  siteRoot,
+  "schemas",
+  "analysis-receipt.schema.json"
+);
+const receiptSchema = JSON.parse(readFileSync(receiptSchemaPath, "utf8"));
+const packageMetadata = JSON.parse(
+  readFileSync(join(projectRoot, "package.json"), "utf8")
+);
+const citationMetadata = readFileSync(
+  join(projectRoot, "CITATION.cff"),
+  "utf8"
+);
 const siteFiles = walk(siteRoot);
 const projectFiles = walk(projectRoot);
 
@@ -24,6 +42,7 @@ check("required public files exist", () => {
     join(siteRoot, "js", "app.js"),
     join(siteRoot, "favicon.svg"),
     join(siteRoot, "social-card.png"),
+    receiptSchemaPath,
     join(projectRoot, "README.md"),
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md")
@@ -58,6 +77,35 @@ check("sharing metadata identifies the canonical live site", () => {
   );
   assert.equal(socialCard.readUInt32BE(16), 1200, "Social card width must be 1200");
   assert.equal(socialCard.readUInt32BE(20), 630, "Social card height must be 630");
+});
+
+check("analysis-receipt contract and release metadata are synchronized", () => {
+  assert.equal(receiptSchema.$id, RECEIPT_SCHEMA_URL);
+  assert.equal(
+    receiptSchema.properties.schema_version.const,
+    RECEIPT_SCHEMA_VERSION
+  );
+  assert.equal(packageMetadata.version, TOOLKIT_VERSION);
+  assert.match(html, new RegExp(`>v${TOOLKIT_VERSION.replaceAll(".", "\\.")}<`));
+  assert.match(
+    citationMetadata,
+    new RegExp(`^version: "${TOOLKIT_VERSION.replaceAll(".", "\\.")}"$`, "m")
+  );
+  for (const id of [
+    "window-receipt",
+    "audit-receipt",
+    "capacity-receipt",
+    "window-action-status",
+    "audit-action-status",
+    "capacity-action-status"
+  ]) {
+    assert.match(html, new RegExp(`\\sid="${id}"`));
+  }
+  assert.equal(
+    receiptSchema.properties.tool.properties.id.enum.length,
+    3,
+    "Receipt schema must cover exactly the three published tools"
+  );
 });
 
 check("HTML IDs are unique", () => {
