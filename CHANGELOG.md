@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## [0.3.0] - 2026-07-26
+
+### Added
+
+- Local-only Reporting Results Checker for external metric and quality CSV exports.
+- Versioned Health Data Edge Cases v0.2.0 catalog with byte, digest, and generated-module parity checks.
+- Deterministic missing, unexpected, and incorrect-value diagnostics.
+- Matching and deliberately failing synthetic examples for every bundled case.
+- Formula-safe detailed diagnostic exports and privacy-safe aggregate receipts.
+- Five-minute fail → diagnose → correct tutorial.
+
+### Changed
+
+- Expanded the responsive overview and navigation from three tools to four.
+- Added strict CSV parsing options for exact headers and non-ragged result rows.
+- Extended analysis-receipt metadata for conformance sources and results.
+
 ## [0.2.0] - 2026-07-25
 
 ### Added
@@ -25,5 +42,6 @@ All notable changes to this project are documented here.
 - Strict UTF-8 CSV loading, malformed-quote rejection, and stale-result invalidation.
 - Canonical sharing metadata, a privacy-safe social card, and explicit project attribution.
 
+[0.3.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.1.0

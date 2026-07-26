@@ -1,4 +1,4 @@
-export const TOOLKIT_VERSION = "0.2.0";
+export const TOOLKIT_VERSION = "0.3.0";
 export const RECEIPT_SCHEMA_VERSION = "1.0.0";
 export const RECEIPT_SCHEMA_URL =
   "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/schemas/analysis-receipt.schema.json";
@@ -78,6 +78,27 @@ const TOOL_CATALOG = {
       {
         id: "sustainable-floor-at-average-arrivals",
         statement: "Recommended sustainable capacity is never below average weekly arrivals."
+      }
+    ]
+  },
+  "reporting-results-checker": {
+    name: "Reporting Results Checker",
+    assumptions: [
+      {
+        id: "local-browser-processing",
+        statement: "Selected result exports are processed locally by the browser."
+      },
+      {
+        id: "pinned-synthetic-contract",
+        statement: "Results are compared only with the selected case in the bundled, versioned synthetic contract catalog."
+      },
+      {
+        id: "complete-key-set-required",
+        statement: "A pass requires every expected key and exact integer value, with no unexpected keys."
+      },
+      {
+        id: "no-pipeline-execution",
+        statement: "The checker evaluates exported results and does not execute or inspect the reporting pipeline that produced them."
       }
     ]
   }
@@ -249,6 +270,71 @@ export async function createCapacityPlanReceipt({ result, generatedAt }) {
       }
     },
     sources: [],
+    warnings
+  });
+}
+
+export async function createConformanceCheckReceipt({
+  result,
+  catalog,
+  metricsEvidence,
+  qualityEvidence,
+  generatedAt
+}) {
+  if (!result || typeof result !== "object") {
+    throw new Error("Conformance result is required.");
+  }
+  if (!catalog || typeof catalog !== "object") {
+    throw new Error("Conformance catalog is required.");
+  }
+  const digest = String(catalog.catalog_digest ?? "");
+  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    throw new Error("Catalog digest must be a SHA-256 value.");
+  }
+  const summary = result.summary ?? {};
+  const mismatchCount = nonNegativeInteger(
+    summary.mismatchCount,
+    "Mismatch count"
+  );
+  const warnings = result.passed
+    ? []
+    : [
+        `${mismatchCount} result difference(s) require review for the selected synthetic case.`
+      ];
+
+  return createReceipt({
+    toolId: "reporting-results-checker",
+    generatedAt,
+    inputs: {
+      case_id: String(result.caseId),
+      contract_catalog: {
+        catalog_digest: digest,
+        catalog_id: String(catalog.catalog_id),
+        source_release: String(catalog.source_release),
+        suite_version: String(catalog.suite_version)
+      }
+    },
+    outputs: {
+      passed: Boolean(result.passed),
+      summary: {
+        expectation_count: nonNegativeInteger(
+          summary.expectationCount,
+          "Expectation count"
+        ),
+        matched: nonNegativeInteger(summary.matched, "Matched count"),
+        mismatch_count: mismatchCount,
+        missing: nonNegativeInteger(summary.missing, "Missing count"),
+        unexpected: nonNegativeInteger(
+          summary.unexpected,
+          "Unexpected count"
+        ),
+        value: nonNegativeInteger(summary.value, "Incorrect value count")
+      }
+    },
+    sources: [
+      sourceFingerprint("actual_metrics", metricsEvidence),
+      sourceFingerprint("actual_quality", qualityEvidence)
+    ],
     warnings
   });
 }

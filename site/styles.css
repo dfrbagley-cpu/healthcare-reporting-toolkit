@@ -534,7 +534,7 @@ main {
 
 .tool-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -927,6 +927,51 @@ input[type="file"]::file-selector-button {
   flex: 1;
 }
 
+.checker-actions .button-primary {
+  flex-basis: 100%;
+}
+
+.contract-meta {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: var(--teal-pale);
+  border: 1px solid var(--mint);
+  border-radius: 0.55rem;
+}
+
+.contract-meta span,
+.contract-meta strong {
+  display: block;
+}
+
+.contract-meta span {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.contract-meta strong {
+  margin-top: 0.1rem;
+  color: var(--navy);
+  font-size: 0.8rem;
+}
+
+.contract-meta code {
+  color: #416168;
+  font-size: 0.66rem;
+  overflow-wrap: anywhere;
+}
+
+.contract-meta a {
+  width: fit-content;
+  color: var(--teal-dark);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
 .form-error {
   margin: 0.9rem 0;
   padding: 0.7rem 0.8rem;
@@ -1296,6 +1341,12 @@ input[type="file"]::file-selector-button {
   font-size: 0.7rem;
 }
 
+.table-heading .artifact-warning {
+  max-width: 520px;
+  margin-top: 0.25rem;
+  color: #7b4b12;
+}
+
 .change-table td:first-child {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem;
@@ -1324,6 +1375,85 @@ input[type="file"]::file-selector-button {
 .status-changed {
   color: #7b4b12;
   background: #fff0d2;
+}
+
+.status-missing,
+.status-unexpected,
+.status-value {
+  color: #7b3b16;
+  background: #fff0d2;
+}
+
+.result-explanation {
+  margin: 0.8rem 0 1.1rem;
+  padding: 0.8rem 0.9rem;
+  color: #455f68;
+  background: var(--blue-pale);
+  border-left: 3px solid #567d8e;
+  border-radius: 0 0.55rem 0.55rem 0;
+  font-size: 0.8rem;
+}
+
+.checker-diagnostics td:nth-child(2),
+.checker-diagnostics td:nth-child(4),
+.checker-diagnostics td:nth-child(5) {
+  overflow-wrap: anywhere;
+}
+
+.checker-diagnostics td:nth-child(2) {
+  min-width: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+.case-context-panel {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 2rem;
+  margin-top: 1.1rem;
+  padding: 1.4rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.case-context-heading h2 {
+  margin: 0.25rem 0 0.45rem;
+  font-size: 1.3rem;
+}
+
+.case-context-heading > p:last-child,
+.case-context-grid p {
+  margin-bottom: 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.case-context-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.case-context-grid article {
+  padding: 0.9rem;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+}
+
+.case-context-grid h3 {
+  margin-bottom: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.tutorial-box ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.tutorial-box li {
+  margin-bottom: 0.35rem;
 }
 
 .capacity-grid {
@@ -1492,11 +1622,6 @@ input[type="file"]::file-selector-button {
     grid-template-columns: 1fr 1fr;
   }
 
-  .tool-card:last-child {
-    grid-column: 1 / -1;
-    min-height: 340px;
-  }
-
   .workspace-grid,
   .capacity-grid {
     grid-template-columns: 1fr;
@@ -1583,9 +1708,7 @@ input[type="file"]::file-selector-button {
     grid-template-columns: 1fr;
   }
 
-  .tool-card,
-  .tool-card:last-child {
-    grid-column: auto;
+  .tool-card {
     min-height: 380px;
   }
 
@@ -1600,6 +1723,8 @@ input[type="file"]::file-selector-button {
   .field-pair,
   .period-grid,
   .schema-grid,
+  .case-context-panel,
+  .case-context-grid,
   .assumption-box > div {
     grid-template-columns: 1fr;
   }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="Transparent browser-based tools for healthcare reporting periods, extract changes, and waitlist capacity scenarios."
+      content="Transparent browser-based tools for healthcare reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
     >
     <meta name="author" content="David Bagley">
     <meta name="referrer" content="no-referrer">
@@ -19,7 +19,7 @@
     <meta property="og:title" content="Healthcare Reporting Toolkit">
     <meta
       property="og:description"
-      content="Transparent browser-based tools for reporting periods, extract changes, and waitlist capacity scenarios."
+      content="Transparent browser-based tools for reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
     >
     <meta
       property="og:url"
@@ -33,13 +33,13 @@
     <meta property="og:image:height" content="630">
     <meta
       property="og:image:alt"
-      content="Healthcare Reporting Toolkit: reporting periods, extract changes, and waitlist capacity."
+      content="Healthcare Reporting Toolkit: reporting periods, extract changes, waitlist capacity, and result validation."
     >
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Healthcare Reporting Toolkit">
     <meta
       name="twitter:description"
-      content="Transparent browser-based tools for reporting periods, extract changes, and waitlist capacity scenarios."
+      content="Transparent browser-based tools for reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
     >
     <meta
       name="twitter:image"
@@ -71,6 +71,7 @@
           <a href="#windows" data-route-link="windows">Periods</a>
           <a href="#auditor" data-route-link="auditor">Extracts</a>
           <a href="#capacity" data-route-link="capacity">Capacity</a>
+          <a href="#validate" data-route-link="validate">Validate</a>
         </nav>
         <a
           class="header-repo-link"
@@ -87,9 +88,10 @@
             <p class="eyebrow">Small tools. Explicit assumptions.</p>
             <h1>Make reporting logic easier to check.</h1>
             <p class="hero-lede">
-              Three focused utilities for operational reporting work that often
+              Four focused utilities for operational reporting work that often
               starts in a spreadsheet: align periods, audit extract changes,
-              and test waitlist capacity scenarios.
+              test waitlist capacity scenarios, and validate result exports
+              against known synthetic cases.
             </p>
             <div class="hero-actions">
               <a class="button button-primary" href="#windows">Open first tool</a>
@@ -136,8 +138,8 @@
 
         <div class="tool-intro">
           <div>
-            <p class="section-kicker">Included in v0.1</p>
-            <h2>One workflow, three pressure points</h2>
+            <p class="section-kicker">Open toolkit</p>
+            <h2>Four narrow, reviewable tools</h2>
           </div>
           <p>
             Define the period, verify what changed, then test whether capacity
@@ -192,6 +194,22 @@
               <li>Required-capacity estimate</li>
             </ul>
             <a href="#capacity">Test a capacity plan <span aria-hidden="true">→</span></a>
+          </article>
+
+          <article class="tool-card featured-card">
+            <div class="tool-number">04</div>
+            <p class="tool-tag">Conformance</p>
+            <h3>Reporting Results Checker</h3>
+            <p>
+              Compare aggregate pipeline outputs with versioned synthetic
+              edge-case contracts without uploading the files.
+            </p>
+            <ul>
+              <li>Exact key and integer checks</li>
+              <li>Actionable mismatch diagnostics</li>
+              <li>Privacy-safe analysis receipt</li>
+            </ul>
+            <a href="#validate">Check reporting results <span aria-hidden="true">→</span></a>
           </article>
         </div>
 
@@ -822,6 +840,260 @@
           </div>
         </details>
       </section>
+
+      <section id="validate" class="page tool-page" data-page hidden>
+        <header class="tool-page-header">
+          <div>
+            <p class="eyebrow">Tool 04 · Conformance</p>
+            <h1>Reporting Results Checker</h1>
+            <p>
+              Test aggregate outputs from another reporting stack against one
+              versioned, synthetic Health Data Edge Cases contract.
+            </p>
+          </div>
+          <div class="header-note local-note">
+            <strong>Local processing</strong>
+            <span>Selected result files stay on this device and are never uploaded by the toolkit.</span>
+          </div>
+        </header>
+
+        <div class="workspace-grid checker-grid">
+          <form id="checker-form" class="input-panel" novalidate>
+            <div class="panel-heading">
+              <span class="step-badge">Inputs</span>
+              <h2>Choose a case and results</h2>
+            </div>
+
+            <div class="field">
+              <label for="checker-case">Synthetic edge case</label>
+              <select id="checker-case" name="case"></select>
+              <small id="checker-expectation-context">Expected results</small>
+            </div>
+
+            <div class="contract-meta" aria-label="Bundled contract version">
+              <div>
+                <span>Health Data Edge Cases</span>
+                <strong id="checker-catalog-version">Loading catalog</strong>
+              </div>
+              <code id="checker-catalog-digest">Checking digest</code>
+              <a
+                href="https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0"
+                rel="noopener noreferrer"
+              >Inspect the pinned contract and fixtures</a>
+            </div>
+
+            <div class="file-field">
+              <label for="checker-metrics">
+                <span>actual_metrics.csv</span>
+                <small id="checker-metrics-name">No file selected</small>
+              </label>
+              <input
+                id="checker-metrics"
+                type="file"
+                accept=".csv,text/csv"
+                aria-describedby="checker-format-help"
+              >
+            </div>
+
+            <div class="file-field">
+              <label for="checker-quality">
+                <span>actual_quality.csv</span>
+                <small id="checker-quality-name">No file selected</small>
+              </label>
+              <input
+                id="checker-quality"
+                type="file"
+                accept=".csv,text/csv"
+                aria-describedby="checker-format-help"
+              >
+            </div>
+
+            <p id="checker-format-help" class="input-limit">
+              Metrics: period_id, metric_id, actual_value<br>
+              Quality: check_id, actual_value<br>
+              Exact column order · UTF-8 CSV · maximum 1 MB and 10,000 rows per file
+            </p>
+
+            <div id="checker-error" class="form-error" role="alert" hidden></div>
+
+            <div class="form-actions checker-actions">
+              <button class="button button-primary" type="submit">Check results</button>
+              <button
+                id="checker-matching-example"
+                class="button button-quiet"
+                type="button"
+              >Use matching example</button>
+              <button
+                id="checker-failing-example"
+                class="button button-quiet"
+                type="button"
+              >Use deliberate mismatch</button>
+            </div>
+          </form>
+
+          <section class="result-panel" aria-labelledby="checker-result-title">
+            <div class="panel-heading result-heading">
+              <div>
+                <span class="step-badge">Result</span>
+                <h2 id="checker-result-title" tabindex="-1">Contract comparison</h2>
+              </div>
+              <span id="checker-status" class="status-pill" aria-live="polite">
+                Awaiting results
+              </span>
+            </div>
+
+            <div id="checker-empty" class="empty-state">
+              <div class="empty-icon" aria-hidden="true">✓</div>
+              <h3>Load two result exports</h3>
+              <p>
+                Use your own aggregate outputs or one of the synthetic examples.
+                The checker requires the complete expected key set and exact
+                integer values.
+              </p>
+            </div>
+
+            <div id="checker-result" hidden>
+              <div class="metric-grid checker-metrics">
+                <article>
+                  <span>Expected</span>
+                  <strong id="checker-expected">0</strong>
+                  <small>contract results</small>
+                </article>
+                <article>
+                  <span>Matched</span>
+                  <strong id="checker-matched">0</strong>
+                  <small>exact results</small>
+                </article>
+                <article>
+                  <span>Missing</span>
+                  <strong id="checker-missing">0</strong>
+                  <small>expected keys</small>
+                </article>
+                <article>
+                  <span>Other differences</span>
+                  <strong id="checker-other">0</strong>
+                  <small>unexpected or wrong</small>
+                </article>
+              </div>
+
+              <p id="checker-result-note" class="result-explanation"></p>
+
+              <div class="table-heading">
+                <div>
+                  <h3>Exact diagnostics</h3>
+                  <p id="checker-diagnostic-count">Showing result differences</p>
+                  <p class="artifact-warning">
+                    The detailed CSV can contain operational keys and values.
+                    Review it before storing or sharing it.
+                  </p>
+                </div>
+                <button
+                  id="checker-download"
+                  class="button button-quiet"
+                  type="button"
+                  disabled
+                >Download diagnostics</button>
+              </div>
+              <div
+                class="result-table-wrap tall-table checker-diagnostics"
+                role="region"
+                aria-label="Reporting result differences"
+                tabindex="0"
+              >
+                <table class="compact-table">
+                  <caption class="visually-hidden">
+                    Missing, unexpected, and incorrect reporting results
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Type</th>
+                      <th scope="col">Key</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Expected</th>
+                      <th scope="col">Actual</th>
+                    </tr>
+                  </thead>
+                  <tbody id="checker-diagnostic-body"></tbody>
+                </table>
+              </div>
+
+              <div class="receipt-panel">
+                <div>
+                  <strong>Privacy-safe reproducibility record</strong>
+                  <span>
+                    Includes source hashes, contract provenance, case ID, and
+                    aggregate counts—not filenames, keys, IDs, values, or row diagnostics.
+                  </span>
+                </div>
+                <button
+                  id="checker-receipt"
+                  class="button button-secondary"
+                  type="button"
+                  disabled
+                >Download analysis receipt</button>
+                <span
+                  id="checker-action-status"
+                  class="action-status"
+                  aria-live="polite"
+                ></span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="case-context-panel" aria-labelledby="checker-case-title">
+          <div class="case-context-heading">
+            <p class="section-kicker">Selected synthetic contract</p>
+            <h2 id="checker-case-title">Edge case</h2>
+            <p id="checker-case-principle"></p>
+          </div>
+          <div class="case-context-grid">
+            <article>
+              <h3>What plausible logic gets wrong</h3>
+              <p id="checker-case-failure"></p>
+            </article>
+            <article>
+              <h3>Expected resolution</h3>
+              <p id="checker-case-resolution"></p>
+            </article>
+          </div>
+        </section>
+
+        <details class="assumption-box tutorial-box">
+          <summary>Five-minute tutorial: fail, diagnose, and correct</summary>
+          <div>
+            <ol>
+              <li>Select any bundled edge case.</li>
+              <li>Choose <strong>Use deliberate mismatch</strong> and review the single wrong-value diagnostic.</li>
+              <li>Read the selected case’s naive failure and expected resolution below the checker.</li>
+              <li>Choose <strong>Use matching example</strong> to replace the changed value with the contract value.</li>
+              <li>Confirm the match, then download the aggregate receipt. Use the detailed CSV only when row-level diagnostics are appropriate to retain.</li>
+            </ol>
+            <p>
+              A pass proves only that these two exports match this synthetic
+              case. It does not certify the pipeline, source data, or untested logic.
+            </p>
+          </div>
+        </details>
+
+        <details class="assumption-box">
+          <summary>Comparison rules, privacy, and limitations</summary>
+          <div>
+            <p>
+              Column names and order must match the public external-results
+              contract exactly. Keys cannot be blank or duplicated. Values must
+              be whole-number text without decimals, exponents, NaN, or infinity.
+              Missing, unexpected, and incorrect results all prevent a match.
+            </p>
+            <p>
+              The checker reads only aggregate result exports. Do not select
+              patient-level source data. Detailed diagnostics can contain
+              operational identifiers and values; analysis receipts deliberately
+              omit them. Source hashes are linkable fingerprints, not anonymization.
+            </p>
+          </div>
+        </details>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -838,7 +1110,7 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.2.0</span>
+        <span>v0.3.0</span>
       </div>
     </footer>
 

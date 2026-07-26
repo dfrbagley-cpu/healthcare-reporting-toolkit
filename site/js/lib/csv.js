@@ -1,4 +1,10 @@
-export function parseCsv(input) {
+export function parseCsv(
+  input,
+  {
+    trimHeaders = true,
+    allowMissingTrailingValues = true
+  } = {}
+) {
   const text = String(input ?? "").replace(/^\uFEFF/, "");
   if (text.trim() === "") {
     throw new Error("CSV file is empty.");
@@ -82,7 +88,9 @@ export function parseCsv(input) {
     throw new Error("CSV file does not contain a header row.");
   }
 
-  const headers = nonBlankRows.shift().map((header) => header.trim());
+  const headers = nonBlankRows
+    .shift()
+    .map((header) => (trimHeaders ? header.trim() : header));
   if (headers.some((header) => header === "")) {
     throw new Error("Every CSV column must have a header.");
   }
@@ -94,6 +102,11 @@ export function parseCsv(input) {
     if (values.length > headers.length) {
       throw new Error(
         `CSV row ${rowIndex + 2} has more values than the header row.`
+      );
+    }
+    if (!allowMissingTrailingValues && values.length < headers.length) {
+      throw new Error(
+        `CSV row ${rowIndex + 2} has fewer values than the header row.`
       );
     }
     const padded = [...values];
