@@ -16,6 +16,9 @@ are welcome.
 7. Do not edit the bundled edge-case catalog or browser module by hand. Update
    the canonical catalog in Health Data Edge Cases, then run the vendoring
    script against that versioned generated artifact.
+8. Changes to extract parsing, worker orchestration, or download limits must
+   also pass `npm run test:browser` in Chrome and preserve the documented
+   100,000-row responsiveness, cancellation, and bounded-output behavior.
 
 ## Design principles
 

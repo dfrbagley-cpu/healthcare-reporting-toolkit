@@ -22,6 +22,9 @@ const receiptSchema = JSON.parse(readFileSync(receiptSchemaPath, "utf8"));
 const packageMetadata = JSON.parse(
   readFileSync(join(projectRoot, "package.json"), "utf8")
 );
+const packageLock = JSON.parse(
+  readFileSync(join(projectRoot, "package-lock.json"), "utf8")
+);
 const citationMetadata = readFileSync(
   join(projectRoot, "CITATION.cff"),
   "utf8"
@@ -46,11 +49,21 @@ check("required public files exist", () => {
     join(siteRoot, "contracts", "catalog-v1.json"),
     join(siteRoot, "js", "data", "edge-case-contracts.js"),
     join(siteRoot, "js", "tools", "conformance-checker.js"),
+    join(siteRoot, "js", "tools", "extract-auditor-limits.js"),
+    join(siteRoot, "js", "workers", "extract-auditor-job.js"),
+    join(siteRoot, "js", "workers", "extract-auditor-worker.js"),
     join(siteRoot, "js", "views", "conformance-checker.js"),
     join(projectRoot, "README.md"),
+    join(projectRoot, "package-lock.json"),
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md"),
-    join(projectRoot, "docs", "CONFORMANCE_CHECKER.md")
+    join(projectRoot, "docs", "CONFORMANCE_CHECKER.md"),
+    join(
+      projectRoot,
+      "tests",
+      "browser",
+      "extract-auditor.browser.mjs"
+    )
   ]) {
     assert.equal(statSync(path).isFile(), true, `Missing ${relative(projectRoot, path)}`);
   }
@@ -61,12 +74,28 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.match(html, /<meta name="viewport"/);
   assert.match(html, /Content-Security-Policy/);
   assert.match(html, /connect-src 'none'/);
+  assert.match(html, /worker-src 'self'/);
+  assert.doesNotMatch(html, /worker-src[^"]*blob:/);
   assert.match(html, /<a class="skip-link" href="#main-content">/);
   assert.match(html, /<main id="main-content"/);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 5);
   assert.match(html, /href="#validate" data-route-link="validate"/);
   assert.match(html, /id="checker-form"/);
   assert.match(html, /id="checker-diagnostic-body"/);
+  for (const id of [
+    "audit-submit",
+    "audit-cancel",
+    "audit-progress",
+    "audit-progress-bar",
+    "audit-progress-phase",
+    "audit-download-note"
+  ]) {
+    assert.match(html, new RegExp(`\\sid="${id}"`));
+  }
+  assert.match(
+    html,
+    /id="audit-key-columns"[\s\S]*maxlength="10000"/
+  );
   assert.match(html, /Five-minute tutorial: fail, diagnose, and correct/);
   assert.match(html, /The detailed CSV can contain operational keys and values/);
 });
@@ -96,6 +125,25 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
     RECEIPT_SCHEMA_VERSION
   );
   assert.equal(packageMetadata.version, TOOLKIT_VERSION);
+  assert.equal(packageLock.version, TOOLKIT_VERSION);
+  assert.equal(packageLock.packages[""].version, TOOLKIT_VERSION);
+  const playwrightVersion =
+    packageMetadata.devDependencies["playwright-core"];
+  assert.match(
+    playwrightVersion,
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/,
+    "Playwright must use an exact semantic version"
+  );
+  assert.equal(
+    packageLock.packages[""].devDependencies["playwright-core"],
+    playwrightVersion,
+    "The root lockfile dependency must match package.json"
+  );
+  assert.equal(
+    packageLock.packages["node_modules/playwright-core"].version,
+    playwrightVersion,
+    "The installed Playwright version must match the declared exact version"
+  );
   assert.match(html, new RegExp(`>v${TOOLKIT_VERSION.replaceAll(".", "\\.")}<`));
   assert.match(
     citationMetadata,
@@ -121,6 +169,32 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
   assert.deepEqual(
     receiptSchema.$defs.sourceFingerprint.properties.role.enum,
     ["baseline", "current", "actual_metrics", "actual_quality"]
+  );
+});
+
+check("browser and release gates are fail-closed", () => {
+  const ci = readFileSync(
+    join(projectRoot, ".github", "workflows", "ci.yml"),
+    "utf8"
+  );
+  const release = readFileSync(
+    join(projectRoot, ".github", "workflows", "release.yml"),
+    "utf8"
+  );
+  assert.match(ci, /Chrome 100,000-row extract audit/);
+  assert.match(ci, /npm ci --ignore-scripts/);
+  assert.match(ci, /CHROME_PATH="\$chrome_path" npm run test:browser/);
+
+  const tagLookup = release.indexOf(
+    'gh api "repos/$REPOSITORY/git/ref/tags/$TAG"'
+  );
+  const releaseLookup = release.indexOf(
+    'gh api "repos/$REPOSITORY/releases/tags/$TAG"'
+  );
+  assert.ok(tagLookup >= 0, "Release workflow must verify the tag");
+  assert.ok(
+    releaseLookup > tagLookup,
+    "Existing releases may be accepted only after the tag is verified"
   );
 });
 
@@ -199,6 +273,22 @@ check("local scripts, styles, and module imports resolve", () => {
         `Missing module ${specifier} imported by ${relative(projectRoot, file)}`
       );
     }
+  }
+
+  const appSource = readFileSync(join(siteRoot, "js", "app.js"), "utf8");
+  const workerUrls = [
+    ...appSource.matchAll(
+      /new URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)/g
+    )
+  ].map((match) => match[1]);
+  assert.deepEqual(workerUrls, ["./workers/extract-auditor-worker.js"]);
+  for (const workerUrl of workerUrls) {
+    const target = resolve(join(siteRoot, "js"), workerUrl);
+    assert.equal(
+      target.startsWith(siteRoot) && statSync(target).isFile(),
+      true,
+      `Missing worker asset ${workerUrl}`
+    );
   }
 });
 
@@ -281,7 +371,13 @@ for (const name of checks) {
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if (directory === projectRoot && entry.isDirectory() && entry.name === ".git") {
+    if (
+      directory === projectRoot &&
+      entry.isDirectory() &&
+      [".git", "node_modules", "playwright-report", "test-results"].includes(
+        entry.name
+      )
+    ) {
       return [];
     }
     const path = join(directory, entry.name);

@@ -47,7 +47,7 @@
     >
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'self'"
     >
     <title>Healthcare Reporting Toolkit</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -483,10 +483,11 @@
                 id="audit-key-columns"
                 type="text"
                 value="record_id"
+                maxlength="10000"
                 autocomplete="off"
                 spellcheck="false"
               >
-              <small>Separate composite keys with commas, such as patient_id, encounter_id.</small>
+              <small>Separate up to 200 composite-key columns with commas, such as patient_id, encounter_id.</small>
             </div>
 
             <label class="check-field" for="audit-trim">
@@ -499,15 +500,30 @@
 
             <div id="audit-error" class="form-error" role="alert" hidden></div>
 
+            <div id="audit-progress" class="operation-progress" hidden>
+              <progress
+                id="audit-progress-bar"
+                max="100"
+                aria-labelledby="audit-progress-phase"
+              ></progress>
+              <span id="audit-progress-phase" aria-live="polite"></span>
+            </div>
+
             <div class="form-actions">
-              <button class="button button-primary" type="submit">Compare extracts</button>
+              <button id="audit-submit" class="button button-primary" type="submit">
+                Compare extracts
+              </button>
               <button id="audit-example" class="button button-quiet" type="button">
                 Use synthetic example
+              </button>
+              <button id="audit-cancel" class="button button-secondary" type="button" hidden>
+                Cancel comparison
               </button>
             </div>
 
             <p class="input-limit">
-              UTF-8 comma-delimited CSV · maximum 10 MB per file · maximum 100,000 data rows
+              UTF-8 comma-delimited CSV · per file: 10 MB, 100,000 data rows,
+              200 columns, and 2,000,000 materialized cells maximum
             </p>
           </form>
 
@@ -597,10 +613,10 @@
 
               <div class="receipt-panel">
                 <div>
-                  <strong>Reproducibility record</strong>
+                  <strong>Analysis receipt</strong>
                   <span>
-                    Includes source fingerprints and aggregate findings, never
-                    filenames, row keys, or cell values.
+                    Includes source fingerprints and aggregate findings. It
+                    omits filenames, key-column names, row keys, and cell values.
                   </span>
                 </div>
                 <button id="audit-receipt" class="button button-secondary" type="button">
@@ -614,10 +630,17 @@
                   <h3>Changed-record preview</h3>
                   <p id="audit-preview-count">Showing material differences</p>
                 </div>
-                <button id="audit-download" class="button button-quiet" type="button">
+                <button
+                  id="audit-download"
+                  class="button button-quiet"
+                  type="button"
+                  aria-describedby="audit-download-note"
+                  disabled
+                >
                   Download change log
                 </button>
               </div>
+              <p id="audit-download-note" class="download-note" aria-live="polite"></p>
               <div class="result-table-wrap tall-table">
                 <table class="compact-table change-table">
                   <caption class="visually-hidden">
@@ -651,6 +674,13 @@
               Values are compared as text; inferred type shifts are screening
               signals, not a formal schema. CSV exports prefix spreadsheet
               formula characters to reduce formula-injection risk.
+            </p>
+            <p>
+              Comparison runs in a same-origin browser worker. The interface
+              retains only aggregate findings, a 100-record preview, source
+              fingerprints, and—when it fits—a complete change-log download.
+              Downloads above 250,000 detail rows or 48 MB are refused rather
+              than silently truncated.
             </p>
           </div>
         </details>
@@ -1110,7 +1140,7 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.3.0</span>
+        <span>v0.4.0</span>
       </div>
     </footer>
 

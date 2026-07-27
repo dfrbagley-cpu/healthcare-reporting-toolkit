@@ -30,6 +30,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install pinned validation dependency
+        run: npm ci --ignore-scripts
+
       - name: Validate toolkit
         run: npm run validate
 

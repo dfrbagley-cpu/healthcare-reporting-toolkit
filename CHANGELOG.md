@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [0.4.0] - 2026-07-26
+
+### Added
+
+- Same-origin module-worker execution for the Extract Change Auditor.
+- Visible comparison progress, immediate cancellation, and stale-run protection.
+- During-parse limits for physical rows, data rows, columns, and materialized cells.
+- Bounded key-column configuration before main-thread tokenization.
+- A 100,000-row production-site browser gate with a main-thread heartbeat.
+- Browser coverage for cancellation, stale results, bounded previews, and formula-safe downloads.
+
+### Changed
+
+- Retain at most 100 material differences in the interface and no unchanged row details.
+- Infer column types incrementally instead of allocating full per-column value copies.
+- Build detailed CSV output in bounded chunks and refuse complete downloads above 250,000 rows or 48 MB.
+- Keep aggregate counts complete when a detailed download exceeds its safety limit.
+- Render composite keys as collision-free JSON arrays in previews and downloads.
+- Omit the dictionary-guessable key-column digest from extract receipts; receipts retain only the key-column count and document that the configuration must be preserved separately.
+- Permit only same-origin workers in the Content Security Policy; network access remains disabled.
+
 ## [0.3.0] - 2026-07-26
 
 ### Added
@@ -42,6 +63,7 @@ All notable changes to this project are documented here.
 - Strict UTF-8 CSV loading, malformed-quote rejection, and stale-result invalidation.
 - Canonical sharing metadata, a privacy-safe social card, and explicit project attribution.
 
+[0.4.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.1.0
