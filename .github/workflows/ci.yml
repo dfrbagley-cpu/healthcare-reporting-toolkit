@@ -31,6 +31,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Install pinned validation dependency
+        run: npm ci --ignore-scripts
+
       - name: Run deterministic validation
         run: npm run validate
 
@@ -51,3 +54,34 @@ jobs:
             --output "$CATALOG_PATH" \
             "$EDGE_CONTRACT_URL"
           node scripts/vendor-edge-contract.mjs --check "$CATALOG_PATH"
+
+  browser-auditor:
+    name: Chrome 100,000-row extract audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Install pinned browser-test dependency
+        run: npm ci --ignore-scripts
+
+      - name: Run production-site browser gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome_path="$(
+            command -v google-chrome ||
+            command -v google-chrome-stable ||
+            true
+          )"
+          test -n "$chrome_path"
+          "$chrome_path" --version
+          CHROME_PATH="$chrome_path" npm run test:browser

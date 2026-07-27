@@ -112,6 +112,10 @@ test("extract receipts expose fingerprints and aggregates without source details
     }
   ];
   audit.warnings = ["PRIVATE-WARNING"];
+  audit.changeLog = {
+    available: false,
+    reason: "PRIVATE-OUTPUT-LIMIT-DETAIL"
+  };
 
   const receipt = await createExtractAuditReceipt({
     audit,
@@ -137,9 +141,9 @@ test("extract receipts expose fingerprints and aggregates without source details
   assert.equal(receipt.sources[0].sha256, "a".repeat(64));
   assert.equal(receipt.outputs.record_summary.changed, 2);
   assert.equal(receipt.inputs.key_column_count, 1);
-  assert.match(
-    receipt.inputs.key_definition_digest,
-    /^sha256:[0-9a-f]{64}$/
+  assert.equal(
+    Object.hasOwn(receipt.inputs, "key_definition_digest"),
+    false
   );
   for (const privateValue of [
     "PRIVATE_KEY_COLUMN",
@@ -151,14 +155,20 @@ test("extract receipts expose fingerprints and aggregates without source details
     "PRIVATE-BEFORE",
     "PRIVATE-AFTER",
     "PRIVATE-WARNING",
+    "PRIVATE-OUTPUT-LIMIT-DETAIL",
     "PRIVATE-BASELINE.csv",
     "PRIVATE-CURRENT.csv"
   ]) {
     assert.equal(serialized.includes(privateValue), false, privateValue);
   }
+  assert.ok(
+    receipt.warnings.includes(
+      "The aggregate comparison completed, but the detailed change log was not generated because it exceeded a local download safety limit."
+    )
+  );
 });
 
-test("extract receipt digest changes with source bytes or hidden key definition", async () => {
+test("extract receipt digest tracks source bytes while omitting key-column names", async () => {
   const audit = auditExtracts({
     baseline: parseCsv(BASELINE_SAMPLE),
     current: parseCsv(CURRENT_SAMPLE),
@@ -203,7 +213,7 @@ test("extract receipt digest changes with source bytes or hidden key definition"
     original.calculation_digest,
     changedSource.calculation_digest
   );
-  assert.notEqual(original.calculation_digest, changedKey.calculation_digest);
+  assert.equal(original.calculation_digest, changedKey.calculation_digest);
   assert.equal(
     canonicalJsonStringify(changedKey).includes("another_private_key"),
     false

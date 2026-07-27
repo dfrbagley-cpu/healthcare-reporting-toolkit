@@ -1,7 +1,4 @@
-import {
-  parseCsv,
-  stringifyCsv
-} from "./lib/csv.js";
+import { stringifyCsv } from "./lib/csv.js";
 import {
   formatLongDate,
   parseIsoDate
@@ -10,20 +7,17 @@ import {
   canonicalJsonStringify,
   createCapacityPlanReceipt,
   createExtractAuditReceipt,
-  createReportingWindowReceipt,
-  sha256Hex
+  createReportingWindowReceipt
 } from "./lib/analysis-receipt.js";
 import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "./samples.js";
-import {
-  auditExtracts,
-  auditRowsForCsv
-} from "./tools/extract-auditor.js";
 import { buildReportingWindow } from "./tools/reporting-window.js";
 import { calculateCapacityPlan } from "./tools/waitlist-planner.js";
+import {
+  EXTRACT_FILE_MAX_BYTES,
+  parseExtractKeyColumns
+} from "./tools/extract-auditor-limits.js";
 import { initializeConformanceChecker } from "./views/conformance-checker.js";
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const MAX_RECORDS = 100_000;
 const ROUTES = new Set([
   "overview",
   "windows",
@@ -38,9 +32,11 @@ const auditState = {
   baseline: null,
   current: null,
   audit: null,
-  settings: null
+  settings: null,
+  changeLogBlob: null
 };
-const auditLoadVersions = { baseline: 0, current: 0 };
+let auditRunId = 0;
+let activeAuditWorker = null;
 const capacityState = { result: null };
 
 initializeNavigation();
@@ -219,119 +215,137 @@ function initializeAuditTool() {
   const form = byId("audit-form");
   const baselineInput = byId("audit-baseline");
   const currentInput = byId("audit-current");
-  byId("audit-key-columns").addEventListener("input", invalidateAuditResult);
-  byId("audit-trim").addEventListener("change", invalidateAuditResult);
+  const keyInput = byId("audit-key-columns");
+  const trimInput = byId("audit-trim");
+  const submitButton = byId("audit-submit");
 
-  baselineInput.addEventListener("change", async () => {
-    await loadAuditFile(
+  if (typeof Worker !== "function") {
+    submitButton.disabled = true;
+    showError(
+      "audit-error",
+      new Error(
+        "This browser does not support the Web Worker required for responsive local comparison."
+      )
+    );
+  }
+
+  keyInput.addEventListener("input", invalidateAuditConfiguration);
+  trimInput.addEventListener("change", invalidateAuditConfiguration);
+
+  baselineInput.addEventListener("change", () => {
+    selectAuditFile(
       baselineInput.files[0],
       "baseline",
       "audit-baseline-name"
     );
   });
-  currentInput.addEventListener("change", async () => {
-    await loadAuditFile(
+  currentInput.addEventListener("change", () => {
+    selectAuditFile(
       currentInput.files[0],
       "current",
       "audit-current-name"
     );
   });
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (typeof Worker !== "function") {
+      return;
+    }
+
     try {
       clearError("audit-error");
       if (!auditState.baseline || !auditState.current) {
         throw new Error("Select both a baseline and current CSV file.");
       }
-      const keyColumns = byId("audit-key-columns").value.split(",");
-      const audit = auditExtracts({
-        baseline: auditState.baseline.data,
-        current: auditState.current.data,
-        keyColumns,
-        trimWhitespace: byId("audit-trim").checked
-      });
-      auditState.audit = audit;
-      auditState.settings = {
-        trimWhitespace: byId("audit-trim").checked
+      invalidateAuditResult();
+      const baseline = auditState.baseline;
+      const current = auditState.current;
+      const settings = {
+        trimWhitespace: trimInput.checked
       };
-      renderAuditResult(audit);
+      const runId = auditRunId + 1;
+      auditRunId = runId;
+      setAuditBusy(true);
+      const result = await runAuditWorker({
+        runId,
+        baselineFile: baseline.file,
+        currentFile: current.file,
+        keyColumns: parseExtractKeyColumns(keyInput.value),
+        trimWhitespace: settings.trimWhitespace
+      });
+      if (runId !== auditRunId) {
+        return;
+      }
+
+      auditState.baseline = {
+        ...baseline,
+        evidence: result.evidence.baseline
+      };
+      auditState.current = {
+        ...current,
+        evidence: result.evidence.current
+      };
+      auditState.audit = result.audit;
+      auditState.settings = settings;
+      auditState.changeLogBlob = result.changeLogBlob;
+      setText(
+        "audit-baseline-name",
+        describeSelectedExtract(auditState.baseline)
+      );
+      setText(
+        "audit-current-name",
+        describeSelectedExtract(auditState.current)
+      );
+      renderAuditResult(result.audit);
+    } catch (error) {
+      if (!(error instanceof AuditRunCancelled)) {
+        showError("audit-error", error);
+      }
+    } finally {
+      if (activeAuditWorker === null) {
+        setAuditBusy(false);
+      }
+    }
+  });
+
+  byId("audit-example").addEventListener("click", () => {
+    try {
+      clearError("audit-error");
+      baselineInput.value = "";
+      currentInput.value = "";
+      selectAuditFile(
+        new File([BASELINE_SAMPLE], "baseline-synthetic.csv", {
+          type: "text/csv"
+        }),
+        "baseline",
+        "audit-baseline-name",
+        { submitAfterSelection: false }
+      );
+      selectAuditFile(
+        new File([CURRENT_SAMPLE], "current-synthetic.csv", {
+          type: "text/csv"
+        }),
+        "current",
+        "audit-current-name",
+        { submitAfterSelection: false }
+      );
+      keyInput.value = "record_id";
+      form.requestSubmit();
     } catch (error) {
       showError("audit-error", error);
     }
   });
 
-  byId("audit-example").addEventListener("click", async () => {
-    const baselineVersion = auditLoadVersions.baseline + 1;
-    const currentVersion = auditLoadVersions.current + 1;
-    auditLoadVersions.baseline = baselineVersion;
-    auditLoadVersions.current = currentVersion;
-    try {
-      clearError("audit-error");
-      invalidateAuditResult();
-      baselineInput.value = "";
-      currentInput.value = "";
-      const baselineBytes = new TextEncoder().encode(BASELINE_SAMPLE);
-      const currentBytes = new TextEncoder().encode(CURRENT_SAMPLE);
-      const [baselineHash, currentHash] = await Promise.all([
-        sha256Hex(baselineBytes),
-        sha256Hex(currentBytes)
-      ]);
-      if (
-        auditLoadVersions.baseline !== baselineVersion ||
-        auditLoadVersions.current !== currentVersion
-      ) {
-        return;
-      }
-      const baselineData = parseCsv(BASELINE_SAMPLE);
-      const currentData = parseCsv(CURRENT_SAMPLE);
-      auditState.baseline = {
-        name: "baseline.csv (synthetic)",
-        data: baselineData,
-        evidence: extractEvidence(
-          baselineHash,
-          baselineBytes.byteLength,
-          baselineData
-        )
-      };
-      auditState.current = {
-        name: "current.csv (synthetic)",
-        data: currentData,
-        evidence: extractEvidence(
-          currentHash,
-          currentBytes.byteLength,
-          currentData
-        )
-      };
-      setText(
-        "audit-baseline-name",
-        describeExtract(auditState.baseline)
-      );
-      setText("audit-current-name", describeExtract(auditState.current));
-      byId("audit-key-columns").value = "record_id";
-      form.requestSubmit();
-    } catch (error) {
-      if (
-        auditLoadVersions.baseline === baselineVersion &&
-        auditLoadVersions.current === currentVersion
-      ) {
-        showError("audit-error", error);
-      }
-    }
+  byId("audit-cancel").addEventListener("click", () => {
+    cancelAuditWorker("Comparison cancelled. Your file selections are retained.");
   });
 
   byId("audit-download").addEventListener("click", () => {
-    if (!auditState.audit) {
+    if (!auditState.changeLogBlob) {
       return;
     }
-    const csv = stringifyCsv(auditRowsForCsv(auditState.audit), [
-      "key",
-      "status",
-      "column",
-      "before",
-      "after"
-    ]);
-    downloadText("extract-change-log.csv", csv, "text/csv;charset=utf-8");
+    downloadBlob("extract-change-log.csv", auditState.changeLogBlob);
     announce("audit-action-status", "Change log downloaded");
   });
 
@@ -363,47 +377,159 @@ function initializeAuditTool() {
   });
 }
 
-async function loadAuditFile(file, stateKey, nameElementId) {
-  const loadVersion = auditLoadVersions[stateKey] + 1;
-  auditLoadVersions[stateKey] = loadVersion;
+function selectAuditFile(
+  file,
+  stateKey,
+  nameElementId,
+  { submitAfterSelection = false } = {}
+) {
+  cancelAuditWorker();
   invalidateAuditResult();
   auditState[stateKey] = null;
   if (!file) {
     setText(nameElementId, "No file selected");
     return;
   }
-  setText(nameElementId, "Loading file…");
-  try {
-    clearError("audit-error");
-    if (file.size > MAX_FILE_BYTES) {
-      throw new Error(`${file.name} is larger than the 10 MB limit.`);
-    }
-    const bytes = await file.arrayBuffer();
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    if (auditLoadVersions[stateKey] !== loadVersion) {
-      return;
-    }
-    const data = parseCsv(text);
-    if (data.records.length > MAX_RECORDS) {
-      throw new Error(`${file.name} contains more than 100,000 data rows.`);
-    }
-    const hash = await sha256Hex(bytes);
-    if (auditLoadVersions[stateKey] !== loadVersion) {
-      return;
-    }
-    auditState[stateKey] = {
-      name: file.name,
-      data,
-      evidence: extractEvidence(hash, bytes.byteLength, data)
-    };
-    setText(nameElementId, describeExtract(auditState[stateKey]));
-  } catch (error) {
-    if (auditLoadVersions[stateKey] !== loadVersion) {
-      return;
-    }
-    auditState[stateKey] = null;
-    setText(nameElementId, "Could not load file");
-    showError("audit-error", error);
+  clearError("audit-error");
+  if (file.size > EXTRACT_FILE_MAX_BYTES) {
+    setText(nameElementId, "Could not select file");
+    showError(
+      "audit-error",
+      new Error(`${file.name} is larger than the 10 MB limit.`)
+    );
+    return;
+  }
+  auditState[stateKey] = {
+    name: file.name,
+    file,
+    evidence: null
+  };
+  setText(nameElementId, describeSelectedExtract(auditState[stateKey]));
+  if (submitAfterSelection) {
+    byId("audit-form").requestSubmit();
+  }
+}
+
+function runAuditWorker({
+  runId,
+  baselineFile,
+  currentFile,
+  keyColumns,
+  trimWhitespace
+}) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("./workers/extract-auditor-worker.js", import.meta.url),
+      {
+        type: "module",
+        name: "extract-change-auditor"
+      }
+    );
+    activeAuditWorker = { worker, runId, reject };
+
+    worker.addEventListener("message", (event) => {
+      if (
+        activeAuditWorker?.worker !== worker ||
+        event.data?.runId !== runId ||
+        runId !== auditRunId
+      ) {
+        return;
+      }
+
+      if (event.data.type === "progress") {
+        renderAuditProgress(event.data.phase, event.data.fraction);
+        return;
+      }
+
+      activeAuditWorker = null;
+      worker.terminate();
+      if (event.data.type === "complete") {
+        resolve(event.data.result);
+      } else {
+        reject(
+          new Error(
+            event.data.message ?? "The extract audit could not be completed."
+          )
+        );
+      }
+    });
+
+    worker.addEventListener("error", () => {
+      if (activeAuditWorker?.worker !== worker) {
+        return;
+      }
+      activeAuditWorker = null;
+      worker.terminate();
+      reject(new Error("The extract-audit worker stopped unexpectedly."));
+    });
+
+    worker.postMessage({
+      type: "run",
+      runId,
+      payload: {
+        baselineFile,
+        currentFile,
+        keyColumns,
+        trimWhitespace
+      }
+    });
+  });
+}
+
+function cancelAuditWorker(message) {
+  if (!activeAuditWorker) {
+    return;
+  }
+  const { worker, reject } = activeAuditWorker;
+  activeAuditWorker = null;
+  auditRunId += 1;
+  worker.terminate();
+  reject(new AuditRunCancelled());
+  invalidateAuditResult();
+  setAuditBusy(false);
+  if (message) {
+    announce("audit-action-status", message);
+  }
+}
+
+function invalidateAuditConfiguration() {
+  cancelAuditWorker();
+  invalidateAuditResult();
+}
+
+function setAuditBusy(busy) {
+  byId("audit-form").setAttribute("aria-busy", String(busy));
+  for (const id of [
+    "audit-baseline",
+    "audit-current",
+    "audit-key-columns",
+    "audit-trim",
+    "audit-submit",
+    "audit-example"
+  ]) {
+    byId(id).disabled = busy;
+  }
+  byId("audit-cancel").hidden = !busy;
+  byId("audit-progress").hidden = !busy;
+  if (!busy) {
+    byId("audit-progress-bar").removeAttribute("value");
+    setText("audit-progress-phase", "");
+  }
+}
+
+function renderAuditProgress(phase, fraction) {
+  const progress = byId("audit-progress-bar");
+  progress.value = Math.round(Number(fraction) * 100);
+  const phaseElement = byId("audit-progress-phase");
+  if (phaseElement.textContent !== phase) {
+    phaseElement.textContent = phase;
+  }
+}
+
+class AuditRunCancelled extends Error {
+  constructor() {
+    super("Extract audit cancelled.");
+    this.name = "AuditRunCancelled";
   }
 }
 
@@ -448,11 +574,16 @@ function renderAuditResult(audit) {
   renderList("audit-warnings", audit.warnings);
   byId("audit-warning-box").hidden = audit.warnings.length === 0;
   byId("audit-receipt").disabled = false;
-
-  const differences = audit.rowDiffs.filter(
-    (difference) => difference.status !== "unchanged"
+  byId("audit-download").disabled = !audit.changeLog.available;
+  setText(
+    "audit-download-note",
+    audit.changeLog.available
+      ? `${formatNumber(audit.changeLog.rowCount)} detailed row${audit.changeLog.rowCount === 1 ? "" : "s"} · ${formatFileSize(audit.changeLog.byteCount)}`
+      : audit.changeLog.reason
   );
-  const preview = differences.slice(0, 100);
+
+  const preview = audit.rowDiffs;
+  const differenceCount = audit.materialDifferenceCount;
   const body = byId("audit-diff-body");
   body.replaceChildren();
 
@@ -471,9 +602,9 @@ function renderAuditResult(audit) {
 
   setText(
     "audit-preview-count",
-    differences.length > preview.length
-      ? `Showing first ${preview.length} of ${differences.length} material differences`
-      : `Showing ${differences.length} material difference${differences.length === 1 ? "" : "s"}`
+    differenceCount > preview.length
+      ? `Showing first ${preview.length} of ${formatNumber(differenceCount)} material differences`
+      : `Showing ${differenceCount} material difference${differenceCount === 1 ? "" : "s"}`
   );
   byId("audit-result-title").focus();
 }
@@ -886,17 +1017,11 @@ function uniqueNumbers(values) {
   return [...new Set(values)];
 }
 
-function describeExtract(extract) {
-  return `${extract.name} · ${formatNumber(extract.data.records.length)} rows · ${formatNumber(extract.data.headers.length)} columns`;
-}
-
-function extractEvidence(sha256, byteCount, data) {
-  return {
-    sha256,
-    byteCount,
-    rowCount: data.records.length,
-    columnCount: data.headers.length
-  };
+function describeSelectedExtract(extract) {
+  if (extract.evidence) {
+    return `${extract.name} · ${formatNumber(extract.evidence.rowCount)} rows · ${formatNumber(extract.evidence.columnCount)} columns`;
+  }
+  return `${extract.name} · ${formatFileSize(extract.file.size)} · validation pending`;
 }
 
 function longDate(isoDate) {
@@ -960,11 +1085,14 @@ function invalidateWindowResult() {
 function invalidateAuditResult() {
   auditState.audit = null;
   auditState.settings = null;
+  auditState.changeLogBlob = null;
   clearError("audit-error");
   byId("audit-result").hidden = true;
   byId("audit-empty").hidden = false;
   byId("audit-receipt").disabled = true;
+  byId("audit-download").disabled = true;
   setText("audit-context", "Awaiting extracts");
+  setText("audit-download-note", "");
   setText("audit-action-status", "");
 }
 
@@ -1039,6 +1167,16 @@ function formatNumber(value, maximumFractionDigits = 0) {
   }).format(value);
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024) {
+    return `${formatNumber(bytes)} bytes`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${formatNumber(bytes / 1024, 1)} KB`;
+  }
+  return `${formatNumber(bytes / (1024 * 1024), 1)} MB`;
+}
+
 function formatWait(value) {
   return Number.isFinite(value)
     ? `${formatNumber(value, 1)} wk`
@@ -1070,7 +1208,10 @@ async function copyText(text) {
 }
 
 function downloadText(filename, text, contentType) {
-  const blob = new Blob([text], { type: contentType });
+  downloadBlob(filename, new Blob([text], { type: contentType }));
+}
+
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

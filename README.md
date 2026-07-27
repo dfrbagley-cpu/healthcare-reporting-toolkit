@@ -15,7 +15,7 @@ Open, browser-based tools for common healthcare operational reporting tasks.
 | Tool | Question it answers | Output |
 |---|---|---|
 | Reporting Window Builder | What exact current and comparison dates should this report use? | Inclusive fiscal, rolling, custom, and like-for-like periods |
-| Extract Change Auditor | What changed between two CSV snapshots? | Schema drift, added/removed/changed records, key warnings, and a change log |
+| Extract Change Auditor | What changed between two CSV snapshots? | Responsive worker-based schema and record comparison, bounded preview, key warnings, and a complete change log when within safety limits |
 | Waitlist Capacity Planner | What happens to backlog if demand and capacity continue at these rates? | Current-versus-planned trajectory, wait proxy, and required-capacity estimate |
 | Reporting Results Checker | Do external result exports match a known synthetic reporting contract? | Exact missing, unexpected, and incorrect-value diagnostics |
 
@@ -40,6 +40,8 @@ Then open `http://localhost:8000`.
 
 - The site is static and has no backend.
 - CSV files are parsed on the user's device.
+- Extract parsing and comparison run in a same-origin module worker so the
+  interface remains responsive and cancellation can terminate the computation.
 - The published site makes no API, analytics, font, or asset requests to third parties.
 - A restrictive Content Security Policy disables network connections from the application.
 - Downloaded CSV change logs protect leading spreadsheet-formula characters.
@@ -64,10 +66,11 @@ For extract audits, SHA-256 fingerprints are calculated from the original file
 bytes in the browser. The receipt includes those fingerprints plus file size,
 row count, and column count; it deliberately excludes filenames, headers,
 record keys, and cell values. The ordered key-column choice is represented by
-its own fingerprint so a configuration change produces a different calculation
-digest without exposing the column names. The separate change-log CSV does
-contain row-level differences and must be handled according to the source
-data's sensitivity.
+its count only; key-column names are omitted rather than represented by a
+guessable deterministic fingerprint. Preserve the chosen key columns
+separately if another person must reproduce the comparison exactly. The
+separate change-log CSV does contain row-level differences and must be handled
+according to the source data's sensitivity.
 
 A receipt and its hashes support repeatability; they do not prove source
 accuracy, authorship, approval, or when a calculation occurred. Review a
@@ -106,6 +109,10 @@ The tools are decision support:
   implement 4-4-5 calendars, holiday calendars, or organization-specific exclusions.
 - Extract values are compared as text. Inferred type changes are screening
   signals, not a formal schema. Inputs must be UTF-8 comma-delimited CSV.
+  Per-file limits are 10 MB, 100,000 data rows, 200 columns, and 2,000,000
+  materialized cells. The interface retains at most 100 material differences.
+  A complete detailed download is refused—not truncated—above 250,000 rows or
+  48 MB, while aggregate comparison counts remain complete.
 - The waitlist planner uses a deterministic fluid-queue approximation with
   constant average arrivals and capacity. It is not a patient-level prediction,
   discrete-event simulation, or clinical prioritization model. Its recommended
@@ -119,10 +126,13 @@ Every material assumption is repeated beside the relevant tool.
 
 ## Development
 
-The site uses plain HTML, CSS, and JavaScript modules with no runtime or
-development dependencies. Node.js 20 or later is needed only for validation.
+The deployed site uses plain HTML, CSS, and JavaScript modules with no runtime
+dependencies. Node.js 20 or later and one pinned development-only
+`playwright-core` package support validation against the Chrome already
+installed on GitHub-hosted runners.
 
 ```bash
+npm ci --ignore-scripts
 npm test
 npm run check
 npm run validate
@@ -130,7 +140,11 @@ npm run validate
 
 `npm run validate` runs deterministic domain tests, contract digest and
 provenance checks, syntax checks, interface integrity checks, privacy-boundary
-checks, and network-primitive checks.
+checks, and network-primitive checks. `npm run test:browser` additionally
+serves the real site over HTTP and validates the 100,000-row worker path,
+responsiveness, cancellation, stale-run protection, bounded preview, and
+formula-safe download in Chrome. Set `CHROME_PATH` if Chrome is not on a
+standard executable path.
 
 ## Project structure
 
@@ -140,12 +154,13 @@ site/
   styles.css                  Responsive visual system
   js/lib/                     Date, CSV, receipt, and hashing utilities
   js/tools/                   Pure calculation modules
+  js/workers/                 Bounded extract-audit job and worker entrypoint
   js/views/                   Isolated browser controllers
   contracts/                  Byte-identical edge-suite contract catalog
   js/app.js                   Browser interface
   examples/                   Synthetic CSV snapshots
   schemas/                    Published analysis-receipt JSON Schema
-tests/                        Deterministic unit tests
+tests/                        Deterministic unit and production-site browser tests
 scripts/validate-site.mjs     Static and boundary validation
 scripts/vendor-edge-contract.mjs  Catalog vendoring and parity validation
 .github/workflows/            CI and GitHub Pages deployment

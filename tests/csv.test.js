@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   inferColumnType,
   parseCsv,
+  parseCsvRows,
   stringifyCsv
 } from "../site/js/lib/csv.js";
 
@@ -88,4 +89,66 @@ test("writes valid CSV and protects spreadsheet formula prefixes", () => {
   assert.match(csv, /"a,b"/);
   assert.match(csv, /' \t=2\+2/);
   assert.ok(csv.endsWith("\r\n"));
+});
+
+test("parses compact row tables for worker-bound processing", () => {
+  const table = parseCsvRows("id,name,active\n1,Alpha\n2,Beta,true\n");
+
+  assert.deepEqual(table, {
+    headers: ["id", "name", "active"],
+    rows: [
+      ["1", "Alpha", ""],
+      ["2", "Beta", "true"]
+    ]
+  });
+});
+
+test("enforces row, physical-row, column, and materialized-cell quotas", () => {
+  assert.throws(
+    () => parseCsvRows("id\n1\n2\n", { maxRows: 1 }),
+    /more than 1 data rows/
+  );
+  assert.throws(
+    () => parseCsvRows("id\n\n1\n", { maxPhysicalRows: 2 }),
+    /more than 2 physical rows/
+  );
+  assert.throws(
+    () =>
+      parseCsvRows('id,note\n1,"line one\nline two"\n', {
+        maxPhysicalRows: 2
+      }),
+    /more than 2 physical rows/
+  );
+  assert.throws(
+    () => parseCsvRows("a,b,c\n1,2,3\n", { maxColumns: 2 }),
+    /more than 2 columns/
+  );
+  assert.throws(
+    () =>
+      parseCsvRows(`${",".repeat(100_000)}\n`, {
+        maxColumns: 2
+      }),
+    /more than 2 columns/
+  );
+
+  const headers = Array.from({ length: 100 }, (_, index) => `c${index}`);
+  assert.throws(
+    () =>
+      parseCsvRows(
+        `${headers.join(",")}\nfirst\nsecond\n`,
+        { maxCells: 150 }
+      ),
+    /more than 150 data cells/
+  );
+});
+
+test("reports bounded parsing progress without changing results", () => {
+  const fractions = [];
+  const table = parseCsvRows("id,value\n1,A\n2,B\n", {
+    onProgress: ({ fraction }) => fractions.push(fraction)
+  });
+
+  assert.equal(table.rows.length, 2);
+  assert.equal(fractions.at(-1), 1);
+  assert.ok(fractions.every((value) => value >= 0 && value <= 1));
 });

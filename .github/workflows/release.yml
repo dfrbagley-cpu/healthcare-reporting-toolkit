@@ -117,16 +117,6 @@ jobs:
             exit 0
           }
 
-          release_error="$RUNNER_TEMP/release-lookup.err"
-          if gh api "repos/$REPOSITORY/releases/tags/$TAG" \
-              >/dev/null 2>"$release_error"; then
-            echo "::notice::Release $TAG already exists; nothing to do."
-            exit 0
-          elif ! grep -q 'HTTP 404' "$release_error"; then
-            cat "$release_error" >&2
-            exit 1
-          fi
-
           ref_error="$RUNNER_TEMP/ref-lookup.err"
           if gh api "repos/$REPOSITORY/git/ref/tags/$TAG" \
               >/dev/null 2>"$ref_error"; then
@@ -141,6 +131,16 @@ jobs:
               -f sha="$VALIDATED_SHA" >/dev/null
           else
             cat "$ref_error" >&2
+            exit 1
+          fi
+
+          release_error="$RUNNER_TEMP/release-lookup.err"
+          if gh api "repos/$REPOSITORY/releases/tags/$TAG" \
+              >/dev/null 2>"$release_error"; then
+            echo "::notice::Release $TAG already exists at the validated tag; nothing to do."
+            exit 0
+          elif ! grep -q 'HTTP 404' "$release_error"; then
+            cat "$release_error" >&2
             exit 1
           fi
 

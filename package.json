@@ -1,12 +1,13 @@
 {
   "name": "healthcare-reporting-toolkit",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Open browser-based tools for reliable healthcare operational reporting.",
   "author": "David Bagley",
   "scripts": {
     "test": "node --test",
+    "test:browser": "node tests/browser/extract-auditor.browser.mjs",
     "check": "node scripts/validate-site.mjs",
     "check:contract": "node scripts/vendor-edge-contract.mjs --check site/contracts/catalog-v1.json",
     "validate": "npm run test && npm run check && npm run check:contract"
@@ -14,5 +15,8 @@
   "engines": {
     "node": ">=20"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "playwright-core": "1.62.0"
+  }
 }

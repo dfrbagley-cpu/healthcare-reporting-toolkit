@@ -1,4 +1,4 @@
-export const TOOLKIT_VERSION = "0.3.0";
+export const TOOLKIT_VERSION = "0.4.0";
 export const RECEIPT_SCHEMA_VERSION = "1.0.0";
 export const RECEIPT_SCHEMA_URL =
   "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/schemas/analysis-receipt.schema.json";
@@ -49,6 +49,10 @@ const TOOL_CATALOG = {
       {
         id: "ambiguous-keys-excluded",
         statement: "Rows with blank key fields and duplicated key values are excluded rather than guessed."
+      },
+      {
+        id: "key-column-names-omitted",
+        statement: "The receipt records the number of key columns but omits their names; preserve that configuration separately for exact reproduction."
       },
       {
         id: "type-inference-screening-only",
@@ -163,9 +167,6 @@ export async function createExtractAuditReceipt({
   trimWhitespace,
   generatedAt
 }) {
-  const keyDefinitionDigest = await sha256Hex(
-    canonicalJsonStringify(audit.keyColumns)
-  );
   const warnings = [];
   if (audit.summary.ambiguousKeys > 0) {
     warnings.push(
@@ -184,6 +185,11 @@ export async function createExtractAuditReceipt({
       "The extracts share no non-key columns, so only added and removed records were compared."
     );
   }
+  if (audit.changeLog?.available === false) {
+    warnings.push(
+      "The aggregate comparison completed, but the detailed change log was not generated because it exceeded a local download safety limit."
+    );
+  }
 
   return createReceipt({
     toolId: "extract-change-auditor",
@@ -191,7 +197,6 @@ export async function createExtractAuditReceipt({
     inputs: {
       comparison_mode: "shared-non-key-columns-as-text",
       key_column_count: audit.keyColumns.length,
-      key_definition_digest: `sha256:${keyDefinitionDigest}`,
       trim_surrounding_whitespace: Boolean(trimWhitespace)
     },
     outputs: {
