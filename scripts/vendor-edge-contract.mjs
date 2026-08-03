@@ -60,10 +60,10 @@ if (mode === "--vendor") {
 function verifyCatalog(catalog) {
   assert.equal(catalog.schema_version, "1.0.0");
   assert.equal(catalog.catalog_id, "health-data-edge-cases");
-  assert.equal(catalog.suite_version, "0.2.0");
+  assert.equal(catalog.suite_version, "0.4.0");
   assert.equal(
     catalog.source_release,
-    "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0"
+    "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0"
   );
   assert.ok(Array.isArray(catalog.cases) && catalog.cases.length > 0);
   assert.match(catalog.catalog_digest, /^sha256:[0-9a-f]{64}$/);

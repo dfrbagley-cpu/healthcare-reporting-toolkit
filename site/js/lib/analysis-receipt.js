@@ -1,4 +1,4 @@
-export const TOOLKIT_VERSION = "0.4.0";
+export const TOOLKIT_VERSION = "0.5.0";
 export const RECEIPT_SCHEMA_VERSION = "1.0.0";
 export const RECEIPT_SCHEMA_URL =
   "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/schemas/analysis-receipt.schema.json";

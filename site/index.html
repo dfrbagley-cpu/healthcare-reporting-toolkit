@@ -72,6 +72,7 @@
           <a href="#auditor" data-route-link="auditor">Extracts</a>
           <a href="#capacity" data-route-link="capacity">Capacity</a>
           <a href="#validate" data-route-link="validate">Validate</a>
+          <a href="#receipts" data-route-link="receipts">Receipts</a>
         </nav>
         <a
           class="header-repo-link"
@@ -212,6 +213,21 @@
             <a href="#validate">Check reporting results <span aria-hidden="true">→</span></a>
           </article>
         </div>
+
+        <aside class="receipt-utility-card" aria-labelledby="receipt-utility-title">
+          <div>
+            <p class="section-kicker">Audit utility</p>
+            <h2 id="receipt-utility-title">Inspect and replay an analysis receipt.</h2>
+            <p>
+              Recalculate its digest, replay supported calculations, and match
+              optional source files to their recorded fingerprints—entirely in
+              the browser.
+            </p>
+          </div>
+          <a class="button button-secondary" href="#receipts">
+            Inspect a receipt
+          </a>
+        </aside>
 
         <div class="boundary-panel">
           <div>
@@ -627,7 +643,7 @@
 
               <div class="table-heading">
                 <div>
-                  <h3>Changed-record preview</h3>
+                  <h3 id="audit-preview-title">Changed-record preview</h3>
                   <p id="audit-preview-count">Showing material differences</p>
                 </div>
                 <button
@@ -641,7 +657,12 @@
                 </button>
               </div>
               <p id="audit-download-note" class="download-note" aria-live="polite"></p>
-              <div class="result-table-wrap tall-table">
+              <div
+                class="result-table-wrap tall-table"
+                role="region"
+                aria-labelledby="audit-preview-title"
+                tabindex="0"
+              >
                 <table class="compact-table change-table">
                   <caption class="visually-hidden">
                     Preview of added, removed, and changed records
@@ -907,7 +928,7 @@
               </div>
               <code id="checker-catalog-digest">Checking digest</code>
               <a
-                href="https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0"
+                href="https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0"
                 rel="noopener noreferrer"
               >Inspect the pinned contract and fixtures</a>
             </div>
@@ -1124,6 +1145,205 @@
           </div>
         </details>
       </section>
+
+      <section id="receipts" class="page tool-page" data-page hidden>
+        <header class="tool-page-header">
+          <div>
+            <p class="eyebrow">Audit utility · Reproducibility</p>
+            <h1>Receipt Inspector and Replay</h1>
+            <p>
+              Check an existing toolkit receipt for internal consistency,
+              replay supported calculations, and optionally match its source
+              fingerprints.
+            </p>
+          </div>
+          <div class="header-note caution-note">
+            <strong>Important boundary</strong>
+            <span>
+              Internal consistency is not proof of identity, authorship,
+              approval, or time of creation.
+            </span>
+          </div>
+        </header>
+
+        <div class="workspace-grid receipt-workspace">
+          <form id="receipt-form" class="input-panel" novalidate>
+            <div class="panel-heading">
+              <span class="step-badge">Local files</span>
+              <h2>Choose a receipt</h2>
+            </div>
+
+            <div class="file-field">
+              <label for="receipt-file">
+                <span>Analysis receipt</span>
+                <small id="receipt-file-name">No file selected</small>
+              </label>
+              <input
+                id="receipt-file"
+                name="receipt"
+                type="file"
+                accept=".json,application/json"
+                required
+              >
+              <small>Strict JSON only · 256 KB maximum</small>
+            </div>
+
+            <div id="receipt-source-panel" class="source-verification-panel" hidden>
+              <h3>Optional source verification</h3>
+              <p id="receipt-source-help">
+                Select the original local files to compare their bytes and
+                SHA-256 fingerprints with the receipt.
+              </p>
+
+              <div id="receipt-source-slot-1" class="file-field" hidden>
+                <label for="receipt-source-1">
+                  <span id="receipt-source-label-1">Recorded source 1</span>
+                  <small id="receipt-source-name-1">Not selected</small>
+                </label>
+                <input id="receipt-source-1" name="source1" type="file">
+                <small id="receipt-source-limit-1">Local verification only</small>
+              </div>
+
+              <div id="receipt-source-slot-2" class="file-field" hidden>
+                <label for="receipt-source-2">
+                  <span id="receipt-source-label-2">Recorded source 2</span>
+                  <small id="receipt-source-name-2">Not selected</small>
+                </label>
+                <input id="receipt-source-2" name="source2" type="file">
+                <small id="receipt-source-limit-2">Local verification only</small>
+              </div>
+            </div>
+
+            <div id="receipt-error" class="form-error" role="alert" hidden></div>
+
+            <div class="form-actions">
+              <button id="receipt-submit" class="button button-primary" type="submit">
+                Inspect receipt
+              </button>
+              <button id="receipt-example" class="button button-quiet" type="button">
+                Load synthetic example
+              </button>
+              <button id="receipt-reset" class="button button-quiet" type="button">
+                Clear
+              </button>
+            </div>
+          </form>
+
+          <section class="result-panel" aria-labelledby="receipt-result-title">
+            <div class="panel-heading result-heading">
+              <div>
+                <span class="step-badge">Result</span>
+                <h2 id="receipt-result-title" tabindex="-1">Receipt assessment</h2>
+              </div>
+              <span id="receipt-status" class="status-pill" aria-live="polite">
+                Awaiting receipt
+              </span>
+            </div>
+
+            <div id="receipt-empty" class="empty-state">
+              <div class="empty-icon" aria-hidden="true">✓</div>
+              <h3>No receipt loaded</h3>
+              <p>
+                Select a toolkit analysis receipt or load the synthetic example.
+                The file stays in this browser tab.
+              </p>
+            </div>
+
+            <div id="receipt-result" hidden>
+              <div class="metric-grid receipt-metrics">
+                <article>
+                  <span>Tool</span>
+                  <strong id="receipt-tool">—</strong>
+                  <small id="receipt-tool-id">—</small>
+                </article>
+                <article>
+                  <span>Toolkit profile</span>
+                  <strong id="receipt-version">—</strong>
+                  <small id="receipt-schema-version">—</small>
+                </article>
+                <article>
+                  <span>Calculation digest</span>
+                  <strong id="receipt-digest-status">—</strong>
+                  <small>Recalculated locally</small>
+                </article>
+                <article>
+                  <span>Replay</span>
+                  <strong id="receipt-replay-status">—</strong>
+                  <small id="receipt-replay-note">—</small>
+                </article>
+              </div>
+
+              <div class="receipt-check-panel">
+                <div class="table-heading">
+                  <div>
+                    <h3>Consistency checks</h3>
+                    <p id="receipt-generated-at">—</p>
+                  </div>
+                  <span id="receipt-check-summary" class="result-context">—</span>
+                </div>
+                <ul id="receipt-check-list" class="receipt-check-list"></ul>
+              </div>
+
+              <div id="receipt-source-results-panel" class="receipt-source-results" hidden>
+                <div class="table-heading">
+                  <div>
+                    <h3 id="receipt-source-title">Source fingerprints</h3>
+                    <p id="receipt-source-summary">—</p>
+                  </div>
+                </div>
+                <div
+                  class="result-table-wrap"
+                  role="region"
+                  aria-labelledby="receipt-source-title"
+                  tabindex="0"
+                >
+                  <table class="compact-table">
+                    <caption class="visually-hidden">
+                      Receipt source-fingerprint verification results
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Role</th>
+                        <th scope="col">Recorded bytes</th>
+                        <th scope="col">Selected file</th>
+                        <th scope="col">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody id="receipt-source-result-body"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="warning-box receipt-boundary-note">
+                <strong>What this result means</strong>
+                <p>
+                  “Internally consistent” means the receipt structure, recorded
+                  digest, and any supported replay agree. It does not authenticate
+                  the receipt, its creator, or its timestamp, and it does not prove
+                  that unselected source files match their fingerprints.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <details class="assumption-box">
+          <summary>Compatibility and verification boundaries</summary>
+          <div>
+            <p>
+              The inspector recognizes published receipt profiles from toolkit
+              versions 0.2.0 through 0.5.0. Reporting-window and capacity receipts
+              are recalculated; extract and conformance receipts are checked by
+              schema, digest, and optional exact source-file fingerprints.
+            </p>
+            <p>
+              Source verification compares the selected file’s exact byte count
+              and SHA-256 digest. A match does not establish where the file came
+              from or whether its contents are appropriate for a real decision.
+            </p>
+          </div>
+        </details>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -1140,7 +1360,7 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.4.0</span>
+        <span>v0.5.0</span>
       </div>
     </footer>
 
