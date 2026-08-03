@@ -16,6 +16,12 @@ import {
   EXTRACT_FILE_MAX_BYTES,
   parseExtractKeyColumns
 } from "./tools/extract-auditor-limits.js";
+import {
+  inspectAnalysisReceipt,
+  RECEIPT_MAX_BYTES,
+  SOURCE_MAX_BYTES,
+  verifyReceiptSource
+} from "./tools/receipt-inspector.js";
 import { initializeConformanceChecker } from "./views/conformance-checker.js";
 
 const ROUTES = new Set([
@@ -23,7 +29,8 @@ const ROUTES = new Set([
   "windows",
   "auditor",
   "capacity",
-  "validate"
+  "validate",
+  "receipts"
 ]);
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
@@ -38,12 +45,20 @@ const auditState = {
 let auditRunId = 0;
 let activeAuditWorker = null;
 const capacityState = { result: null };
+const receiptState = {
+  input: null,
+  inspection: null,
+  sourceFiles: new Map(),
+  sourceResults: new Map()
+};
+let receiptRunId = 0;
 
 initializeNavigation();
 initializeWindowTool();
 initializeAuditTool();
 initializeCapacityTool();
 initializeConformanceChecker();
+initializeReceiptInspector();
 
 function initializeNavigation() {
   const showRoute = () => {
@@ -1118,6 +1133,449 @@ function invalidateCapacityResult() {
   setText("capacity-action-status", "");
   byId("capacity-chart").replaceChildren();
   byId("capacity-table-body").replaceChildren();
+}
+
+function initializeReceiptInspector() {
+  const form = byId("receipt-form");
+  const receiptInput = byId("receipt-file");
+
+  receiptInput.addEventListener("change", () => {
+    receiptRunId += 1;
+    setReceiptBusy(false);
+    const file = receiptInput.files[0];
+    resetReceiptSources();
+    receiptState.input = null;
+    invalidateReceiptResult();
+    if (!file) {
+      setText("receipt-file-name", "No file selected");
+      return;
+    }
+    if (file.size > RECEIPT_MAX_BYTES) {
+      receiptInput.value = "";
+      setText("receipt-file-name", "Could not select file");
+      showError(
+        "receipt-error",
+        new Error(`${file.name} is larger than the 256 KB limit.`)
+      );
+      return;
+    }
+    receiptState.input = { file, name: file.name };
+    setText(
+      "receipt-file-name",
+      `${file.name} · ${formatFileSize(file.size)} · validation pending`
+    );
+  });
+
+  for (const slot of [1, 2]) {
+    byId(`receipt-source-${slot}`).addEventListener("change", () => {
+      void selectReceiptSource(slot);
+    });
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void runReceiptInspection({ focusResult: true });
+  });
+
+  byId("receipt-example").addEventListener("click", async () => {
+    const exampleRunId = receiptRunId + 1;
+    receiptRunId = exampleRunId;
+    setReceiptBusy(true);
+    try {
+      const inputs = {
+        type: "fiscal_ytd",
+        asOf: "2026-06-15",
+        fiscalStartMonth: 4,
+        rollingDays: 90,
+        customStart: "",
+        customEnd: "",
+        comparisonType: "prior_year"
+      };
+      const receipt = await createReportingWindowReceipt({
+        inputs,
+        result: buildReportingWindow(inputs),
+        generatedAt: "2026-08-03T12:00:00.000Z"
+      });
+      if (exampleRunId !== receiptRunId) {
+        return;
+      }
+      receiptInput.value = "";
+      resetReceiptSources();
+      receiptState.input = {
+        name: "synthetic-reporting-window-receipt.json",
+        text: canonicalJsonStringify(receipt, { pretty: true })
+      };
+      setText(
+        "receipt-file-name",
+        "Synthetic reporting-window receipt · local example"
+      );
+      await runReceiptInspection({ focusResult: true });
+    } catch (error) {
+      if (exampleRunId === receiptRunId) {
+        showError("receipt-error", error);
+      }
+    } finally {
+      if (exampleRunId === receiptRunId) {
+        setReceiptBusy(false);
+      }
+    }
+  });
+
+  byId("receipt-reset").addEventListener("click", () => {
+    receiptRunId += 1;
+    setReceiptBusy(false);
+    receiptInput.value = "";
+    receiptState.input = null;
+    resetReceiptSources();
+    invalidateReceiptResult();
+    setText("receipt-file-name", "No file selected");
+  });
+}
+
+async function selectReceiptSource(slot) {
+  const input = byId(`receipt-source-${slot}`);
+  const role = input.dataset.sourceRole;
+  const file = input.files[0];
+  clearError("receipt-error");
+  receiptState.sourceResults.delete(role);
+
+  if (!role || !file) {
+    if (role) {
+      receiptState.sourceFiles.delete(role);
+    }
+    setText(`receipt-source-name-${slot}`, "Not selected");
+    renderReceiptResult(false);
+    return;
+  }
+
+  const maximum = SOURCE_MAX_BYTES[role];
+  if (!maximum || file.size > maximum) {
+    input.value = "";
+    receiptState.sourceFiles.delete(role);
+    setText(`receipt-source-name-${slot}`, "Could not select file");
+    showError(
+      "receipt-error",
+      new Error(
+        `${file.name} is larger than the ${formatFileSize(maximum ?? 0)} limit for ${sourceRoleLabel(role).toLowerCase()}.`
+      )
+    );
+    renderReceiptResult(false);
+    return;
+  }
+
+  receiptState.sourceFiles.set(role, file);
+  setText(
+    `receipt-source-name-${slot}`,
+    `${file.name} · ${formatFileSize(file.size)}`
+  );
+  await runReceiptInspection({ focusResult: false });
+}
+
+async function runReceiptInspection({ focusResult }) {
+  const selected = receiptState.input;
+  const runId = receiptRunId + 1;
+  receiptRunId = runId;
+
+  try {
+    clearError("receipt-error");
+    if (!selected) {
+      throw new Error("Select an analysis receipt or load the synthetic example.");
+    }
+    setReceiptBusy(true);
+    let receiptPayload = selected.text;
+    if (selected.file) {
+      if (selected.file.size > RECEIPT_MAX_BYTES) {
+        throw new Error(`${selected.file.name} is larger than the 256 KB limit.`);
+      }
+      receiptPayload = await selected.file.arrayBuffer();
+      if (runId !== receiptRunId || selected !== receiptState.input) {
+        return;
+      }
+    }
+    const inspection = await inspectAnalysisReceipt(receiptPayload);
+    if (runId !== receiptRunId || selected !== receiptState.input) {
+      return;
+    }
+
+    receiptState.inspection = inspection;
+    configureReceiptSourceInputs(inspection.source_roles);
+    const sourceResults = await Promise.all(
+      inspection.source_roles
+        .filter((role) => receiptState.sourceFiles.has(role))
+        .map((role) =>
+          verifyReceiptSource({
+            receipt: inspection.receipt,
+            role,
+            input: receiptState.sourceFiles.get(role)
+          })
+        )
+    );
+    if (runId !== receiptRunId || selected !== receiptState.input) {
+      return;
+    }
+    receiptState.sourceResults = new Map(
+      sourceResults.map((result) => [result.role, result])
+    );
+    renderReceiptResult(focusResult);
+  } catch (error) {
+    if (runId === receiptRunId) {
+      receiptState.inspection = null;
+      receiptState.sourceResults.clear();
+      invalidateReceiptResult({ clearSelectionError: false });
+      showError("receipt-error", error);
+    }
+  } finally {
+    if (runId === receiptRunId) {
+      setReceiptBusy(false);
+    }
+  }
+}
+
+function configureReceiptSourceInputs(roles) {
+  const allowedRoles = new Set(roles);
+  for (const role of [...receiptState.sourceFiles.keys()]) {
+    if (!allowedRoles.has(role)) {
+      receiptState.sourceFiles.delete(role);
+    }
+  }
+  for (let index = 0; index < 2; index += 1) {
+    const slot = index + 1;
+    const role = roles[index];
+    const container = byId(`receipt-source-slot-${slot}`);
+    const input = byId(`receipt-source-${slot}`);
+    container.hidden = !role;
+    input.dataset.sourceRole = role ?? "";
+    if (!role) {
+      input.value = "";
+      setText(`receipt-source-name-${slot}`, "Not selected");
+      continue;
+    }
+    setText(`receipt-source-label-${slot}`, sourceRoleLabel(role));
+    setText(
+      `receipt-source-limit-${slot}`,
+      `Exact bytes and SHA-256 · ${formatFileSize(SOURCE_MAX_BYTES[role])} maximum`
+    );
+    const selected = receiptState.sourceFiles.get(role);
+    setText(
+      `receipt-source-name-${slot}`,
+      selected
+        ? `${selected.name} · ${formatFileSize(selected.size)}`
+        : "Not selected"
+    );
+  }
+  byId("receipt-source-panel").hidden = roles.length === 0;
+}
+
+function renderReceiptResult(focusResult) {
+  const inspection = receiptState.inspection;
+  if (!inspection) {
+    return;
+  }
+
+  const { receipt, digest, replay } = inspection;
+  const sourceResults = receiptState.sourceResults;
+  const sourceMismatch = [...sourceResults.values()].some(
+    (result) => !result.matches
+  );
+  const internallyConsistent =
+    inspection.verdict === "internally-consistent";
+  const overallConsistent = internallyConsistent && !sourceMismatch;
+  const status = byId("receipt-status");
+  status.classList.toggle("on-track", overallConsistent);
+  status.classList.toggle("off-track", !overallConsistent);
+  status.textContent = sourceMismatch
+    ? "Source mismatch"
+    : internallyConsistent
+      ? "Internally consistent"
+      : "Inconsistent";
+
+  setText("receipt-tool", receipt.tool.name);
+  setText("receipt-tool-id", receipt.tool.id);
+  setText("receipt-version", `v${receipt.toolkit_version}`);
+  setText("receipt-schema-version", `Receipt schema ${receipt.schema_version}`);
+  setText(
+    "receipt-digest-status",
+    digest.matches ? "Match" : "Mismatch"
+  );
+  setText(
+    "receipt-replay-status",
+    replay.status === "match"
+      ? "Matched"
+      : replay.status === "mismatch"
+        ? "Mismatch"
+        : "Not available"
+  );
+  setText("receipt-replay-note", replay.reason);
+  setText(
+    "receipt-generated-at",
+    `Recorded ${receipt.generated_at}; this timestamp is outside digest coverage.`
+  );
+
+  const checks = [
+    {
+      className: "check-pass",
+      text: `Structure matches the supported ${receipt.toolkit_version}/${receipt.schema_version} ${receipt.tool.id} profile.`
+    },
+    {
+      className: digest.matches ? "check-pass" : "check-fail",
+      text: digest.matches
+        ? "The recorded calculation digest matches a fresh local recalculation. The schema URL, digest field, and timestamp are excluded by the published digest contract."
+        : "The recorded calculation digest does not match a fresh local recalculation."
+    },
+    {
+      className:
+        replay.status === "match"
+          ? "check-pass"
+          : replay.status === "mismatch"
+            ? "check-fail"
+            : "check-info",
+      text:
+        replay.status === "match"
+          ? replay.reason
+          : replay.status === "mismatch"
+            ? `${replay.reason} ${formatReplayDifferences(replay.differences)}`
+            : replay.reason
+    }
+  ];
+  const checkList = byId("receipt-check-list");
+  checkList.replaceChildren();
+  for (const check of checks) {
+    const item = document.createElement("li");
+    item.className = check.className;
+    item.textContent = check.text;
+    checkList.append(item);
+  }
+
+  renderReceiptSources(inspection);
+  const verifiedCount = sourceResults.size;
+  setText(
+    "receipt-check-summary",
+    inspection.source_roles.length === 0
+      ? "3 local checks"
+      : `3 local checks · ${verifiedCount}/${inspection.source_roles.length} sources checked`
+  );
+  byId("receipt-empty").hidden = true;
+  byId("receipt-result").hidden = false;
+  if (focusResult) {
+    byId("receipt-result-title").focus();
+  }
+}
+
+function renderReceiptSources(inspection) {
+  const roles = inspection.source_roles;
+  const panel = byId("receipt-source-results-panel");
+  panel.hidden = roles.length === 0;
+  if (roles.length === 0) {
+    byId("receipt-source-result-body").replaceChildren();
+    return;
+  }
+
+  const body = byId("receipt-source-result-body");
+  body.replaceChildren();
+  let selected = 0;
+  let matched = 0;
+  let mismatched = 0;
+  for (const role of roles) {
+    const source = inspection.receipt.sources.find(
+      (candidate) => candidate.role === role
+    );
+    const file = receiptState.sourceFiles.get(role);
+    const result = receiptState.sourceResults.get(role);
+    if (file) {
+      selected += 1;
+    }
+    if (result?.matches) {
+      matched += 1;
+    } else if (result) {
+      mismatched += 1;
+    }
+
+    const row = document.createElement("tr");
+    const values = [
+      sourceRoleLabel(role),
+      formatNumber(source.byte_count),
+      file ? file.name : "Not selected",
+      result ? (result.matches ? "Matched" : "Mismatch") : "Not selected"
+    ];
+    for (const [index, value] of values.entries()) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      if (index === 3) {
+        cell.className = result
+          ? result.matches
+            ? "source-match"
+            : "source-mismatch"
+          : "source-unchecked";
+      }
+      row.append(cell);
+    }
+    body.append(row);
+  }
+  setText(
+    "receipt-source-summary",
+    `${selected}/${roles.length} selected · ${matched} matched · ${mismatched} mismatched`
+  );
+}
+
+function resetReceiptSources() {
+  receiptState.sourceFiles.clear();
+  receiptState.sourceResults.clear();
+  for (const slot of [1, 2]) {
+    const input = byId(`receipt-source-${slot}`);
+    input.value = "";
+    input.dataset.sourceRole = "";
+    byId(`receipt-source-slot-${slot}`).hidden = true;
+    setText(`receipt-source-name-${slot}`, "Not selected");
+  }
+  byId("receipt-source-panel").hidden = true;
+}
+
+function invalidateReceiptResult({ clearSelectionError = true } = {}) {
+  receiptState.inspection = null;
+  receiptState.sourceResults.clear();
+  if (clearSelectionError) {
+    clearError("receipt-error");
+  }
+  byId("receipt-result").hidden = true;
+  byId("receipt-empty").hidden = false;
+  const status = byId("receipt-status");
+  status.classList.remove("on-track", "off-track");
+  status.textContent = "Awaiting receipt";
+}
+
+function setReceiptBusy(busy) {
+  byId("receipt-form").setAttribute("aria-busy", String(busy));
+  for (const id of [
+    "receipt-file",
+    "receipt-source-1",
+    "receipt-source-2",
+    "receipt-submit",
+    "receipt-example",
+    "receipt-reset"
+  ]) {
+    byId(id).disabled = busy;
+  }
+}
+
+function sourceRoleLabel(role) {
+  return {
+    baseline: "Baseline extract",
+    current: "Current extract",
+    actual_metrics: "Actual metrics",
+    actual_quality: "Actual quality"
+  }[role] ?? role;
+}
+
+function formatReplayDifferences(differences) {
+  if (differences.length === 0) {
+    return "";
+  }
+  return differences
+    .map(
+      (difference) =>
+        `${difference.path}: recorded ${difference.recorded}, replayed ${difference.replayed}.`
+    )
+    .join(" ");
 }
 
 async function downloadAnalysisReceipt({

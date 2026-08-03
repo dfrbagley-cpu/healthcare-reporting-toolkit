@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  EDGE_CONTRACT_RELEASE: https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0
-  EDGE_CONTRACT_URL: https://raw.githubusercontent.com/dfrbagley-cpu/health-data-edge-cases/v0.2.0/docs/contracts/catalog-v1.json
+  EDGE_CONTRACT_RELEASE: https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0
+  EDGE_CONTRACT_URL: https://raw.githubusercontent.com/dfrbagley-cpu/health-data-edge-cases/v0.4.0/docs/contracts/catalog-v1.json
 
 jobs:
   validate:
@@ -40,7 +40,7 @@ jobs:
       - name: Verify pinned edge-suite release catalog
         if: matrix.node-version == 24
         env:
-          CATALOG_PATH: ${{ runner.temp }}/health-data-edge-cases-v0.2.0-catalog.json
+          CATALOG_PATH: ${{ runner.temp }}/health-data-edge-cases-v0.4.0-catalog.json
         run: |
           set -euo pipefail
           echo "Verifying catalog published by $EDGE_CONTRACT_RELEASE"
@@ -56,7 +56,7 @@ jobs:
           node scripts/vendor-edge-contract.mjs --check "$CATALOG_PATH"
 
   browser-auditor:
-    name: Chrome 100,000-row extract audit
+    name: Chrome 100,000-row extract audit, tool journeys, and accessibility
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -73,7 +73,7 @@ jobs:
       - name: Install pinned browser-test dependency
         run: npm ci --ignore-scripts
 
-      - name: Run production-site browser gate
+      - name: Run production-site journeys and accessibility gate
         shell: bash
         run: |
           set -euo pipefail

@@ -29,6 +29,7 @@ const citationMetadata = readFileSync(
   join(projectRoot, "CITATION.cff"),
   "utf8"
 );
+const changelog = readFileSync(join(projectRoot, "CHANGELOG.md"), "utf8");
 const siteFiles = walk(siteRoot);
 const projectFiles = walk(projectRoot);
 
@@ -50,6 +51,8 @@ check("required public files exist", () => {
     join(siteRoot, "js", "data", "edge-case-contracts.js"),
     join(siteRoot, "js", "tools", "conformance-checker.js"),
     join(siteRoot, "js", "tools", "extract-auditor-limits.js"),
+    join(siteRoot, "js", "tools", "receipt-inspector.js"),
+    join(siteRoot, "js", "lib", "strict-json.js"),
     join(siteRoot, "js", "workers", "extract-auditor-job.js"),
     join(siteRoot, "js", "workers", "extract-auditor-worker.js"),
     join(siteRoot, "js", "views", "conformance-checker.js"),
@@ -58,6 +61,7 @@ check("required public files exist", () => {
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md"),
     join(projectRoot, "docs", "CONFORMANCE_CHECKER.md"),
+    join(projectRoot, "docs", "RECEIPT_INSPECTOR.md"),
     join(
       projectRoot,
       "tests",
@@ -78,8 +82,9 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.doesNotMatch(html, /worker-src[^"]*blob:/);
   assert.match(html, /<a class="skip-link" href="#main-content">/);
   assert.match(html, /<main id="main-content"/);
-  assert.equal((html.match(/<h1\b/g) ?? []).length, 5);
+  assert.equal((html.match(/<h1\b/g) ?? []).length, 6);
   assert.match(html, /href="#validate" data-route-link="validate"/);
+  assert.match(html, /href="#receipts" data-route-link="receipts"/);
   assert.match(html, /id="checker-form"/);
   assert.match(html, /id="checker-diagnostic-body"/);
   for (const id of [
@@ -88,7 +93,20 @@ check("HTML declares core accessibility and security metadata", () => {
     "audit-progress",
     "audit-progress-bar",
     "audit-progress-phase",
-    "audit-download-note"
+    "audit-download-note",
+    "receipt-form",
+    "receipt-file",
+    "receipt-submit",
+    "receipt-example",
+    "receipt-reset",
+    "receipt-source-1",
+    "receipt-source-2",
+    "receipt-error",
+    "receipt-status",
+    "receipt-result",
+    "receipt-digest-status",
+    "receipt-replay-status",
+    "receipt-source-result-body"
   ]) {
     assert.match(html, new RegExp(`\\sid="${id}"`));
   }
@@ -98,6 +116,8 @@ check("HTML declares core accessibility and security metadata", () => {
   );
   assert.match(html, /Five-minute tutorial: fail, diagnose, and correct/);
   assert.match(html, /The detailed CSV can contain operational keys and values/);
+  assert.match(html, /Internal consistency is not proof of identity/);
+  assert.match(html, /Strict JSON only · 256 KB maximum/);
 });
 
 check("sharing metadata identifies the canonical live site", () => {
@@ -129,6 +149,7 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
   assert.equal(packageLock.packages[""].version, TOOLKIT_VERSION);
   const playwrightVersion =
     packageMetadata.devDependencies["playwright-core"];
+  const axeVersion = packageMetadata.devDependencies["axe-core"];
   assert.match(
     playwrightVersion,
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/,
@@ -144,10 +165,40 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
     playwrightVersion,
     "The installed Playwright version must match the declared exact version"
   );
+  assert.match(
+    axeVersion,
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/,
+    "axe-core must use an exact semantic version"
+  );
+  assert.equal(
+    packageLock.packages[""].devDependencies["axe-core"],
+    axeVersion,
+    "The root lockfile axe-core dependency must match package.json"
+  );
+  assert.equal(
+    packageLock.packages["node_modules/axe-core"].version,
+    axeVersion,
+    "The installed axe-core version must match the declared exact version"
+  );
   assert.match(html, new RegExp(`>v${TOOLKIT_VERSION.replaceAll(".", "\\.")}<`));
   assert.match(
     citationMetadata,
     new RegExp(`^version: "${TOOLKIT_VERSION.replaceAll(".", "\\.")}"$`, "m")
+  );
+  assert.match(citationMetadata, /^date-released: "2026-08-03"$/m);
+  assert.match(
+    changelog,
+    new RegExp(
+      `^## \\[${TOOLKIT_VERSION.replaceAll(".", "\\.")}\\] - 2026-08-03$`,
+      "m"
+    )
+  );
+  assert.match(
+    changelog,
+    new RegExp(
+      `^\\[${TOOLKIT_VERSION.replaceAll(".", "\\.")}\\]: https://github\\.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v${TOOLKIT_VERSION.replaceAll(".", "\\.")}$`,
+      "m"
+    )
   );
   for (const id of [
     "window-receipt",
@@ -181,9 +232,24 @@ check("browser and release gates are fail-closed", () => {
     join(projectRoot, ".github", "workflows", "release.yml"),
     "utf8"
   );
+  const pages = readFileSync(
+    join(projectRoot, ".github", "workflows", "pages.yml"),
+    "utf8"
+  );
+  const browserTest = readFileSync(
+    join(projectRoot, "tests", "browser", "extract-auditor.browser.mjs"),
+    "utf8"
+  );
   assert.match(ci, /Chrome 100,000-row extract audit/);
   assert.match(ci, /npm ci --ignore-scripts/);
   assert.match(ci, /CHROME_PATH="\$chrome_path" npm run test:browser/);
+  assert.match(browserTest, /verifyReceiptJourney\(page, reportingWindowReceipt\)/);
+  assert.match(browserTest, /verifyAccessibility\(page, "receipts"\)/);
+  assert.match(pages, /workflow_run:/);
+  assert.match(pages, /workflows: \["Quality gates"\]/);
+  assert.match(pages, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(pages, /TESTED_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
+  assert.match(pages, /test "\$current_sha" = "\$TESTED_SHA"/);
 
   const tagLookup = release.indexOf(
     'gh api "repos/$REPOSITORY/git/ref/tags/$TAG"'

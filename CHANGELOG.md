@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.0] - 2026-08-03
+
+### Added
+
+- A local-only Receipt Inspector for strict, bounded analysis-receipt import.
+- Calculation-digest recalculation with explicit disclosure of the three
+  top-level fields outside digest coverage.
+- Deterministic replay for Reporting Window and Waitlist Capacity receipts,
+  including detection of altered outputs even after a digest is recomputed.
+- Optional exact-byte and SHA-256 source verification for Extract Auditor and
+  Reporting Results receipts without uploading, persisting, or copying source
+  content into the result.
+- Compatibility profiles for every published receipt format from toolkit
+  versions 0.2.0 through 0.5.0.
+- Complete Chrome journeys and automated WCAG 2 A/AA checks across the public
+  toolkit routes.
+
+### Changed
+
+- Updated the bundled Health Data Edge Cases catalog from v0.2.0 to v0.4.0,
+  retaining all five cases and 72 expectations with stronger input contracts.
+- Expanded the browser gate from the 100,000-row auditor path to all four tools
+  plus receipt inspection while preserving responsiveness and cancellation
+  coverage.
+- Clarified that a receipt can be internally consistent without proving
+  authenticity, authorship, approval, source origin, or creation time.
+
+### Unchanged
+
+- Receipt schema version 1.0.0 and the calculation semantics of the four
+  existing tools remain compatible with their published releases.
+
 ## [0.4.0] - 2026-07-26
 
 ### Added
@@ -63,6 +95,7 @@ All notable changes to this project are documented here.
 - Strict UTF-8 CSV loading, malformed-quote rejection, and stale-result invalidation.
 - Canonical sharing metadata, a privacy-safe social card, and explicit project attribution.
 
+[0.5.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.2.0

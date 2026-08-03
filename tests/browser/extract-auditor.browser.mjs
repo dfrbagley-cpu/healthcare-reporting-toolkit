@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import {
   access,
   mkdtemp,
@@ -12,6 +13,13 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright-core";
+import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "../../site/js/samples.js";
+
+const require = createRequire(import.meta.url);
+const axeSource = await readFile(
+  require.resolve("axe-core/axe.min.js"),
+  "utf8"
+);
 
 const projectRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -22,6 +30,7 @@ const siteRoot = join(projectRoot, "site");
 const temporaryDirectory = await mkdtemp(
   join(tmpdir(), "toolkit-browser-test-")
 );
+const accessibilityViolations = [];
 let server;
 let browser;
 let testFailure;
@@ -34,14 +43,32 @@ try {
     args: ["--no-sandbox", "--disable-dev-shm-usage"]
   });
   const page = await browser.newPage({ acceptDownloads: true });
-  await page.goto(`${server.url}/#auditor`, {
+  await page.goto(`${server.url}/#overview`, {
     waitUntil: "networkidle"
   });
+  await page.addScriptTag({ url: `${server.url}/__test__/axe.min.js` });
 
+  await verifyAccessibility(page, "overview");
+  const reportingWindowReceipt = await verifyReportingWindowJourney(page);
+  await verifyAccessibility(page, "windows");
+  await verifyCapacityJourney(page);
+  await verifyAccessibility(page, "capacity");
+  await verifyConformanceJourney(page);
+  await verifyAccessibility(page, "validate");
+  await showRoute(page, "auditor");
   await verifyHundredThousandRows(page);
+  await verifyAccessibility(page, "auditor");
   await verifyCancellationAndStaleRunProtection(page);
+  await verifyReceiptJourney(page, reportingWindowReceipt);
+  await verifyAccessibility(page, "receipts");
+  await verifyMobileNavigation(page);
+  assert.deepEqual(
+    accessibilityViolations,
+    [],
+    `WCAG 2 A/AA axe violations:\n${JSON.stringify(accessibilityViolations, null, 2)}`
+  );
   console.log(
-    "Browser-verified 100,000-row worker audit, bounded preview, formula-safe download, responsive heartbeat, cancellation, and stale-run protection."
+    "Browser-verified all four tool journeys plus receipt inspection, WCAG 2 A/AA axe scans on every route, and the 100,000-row worker audit with bounded output, responsive heartbeat, cancellation, and stale-run protection."
   );
 } catch (error) {
   testFailure = error;
@@ -62,6 +89,314 @@ const cleanupFailures = cleanupResults
   .map((result) => result.reason);
 if (cleanupFailures.length > 0) {
   throw new AggregateError(cleanupFailures, "Browser-test cleanup failed.");
+}
+
+async function verifyReportingWindowJourney(page) {
+  await showRoute(page, "windows");
+  await page.locator("#window-example").click();
+  await page.locator("#window-result").waitFor({ state: "visible" });
+
+  assert.equal(
+    await page.locator("#window-current-start").textContent(),
+    "2026-04-01"
+  );
+  assert.equal(
+    await page.locator("#window-current-end").textContent(),
+    "2026-06-15"
+  );
+  assert.equal(
+    await page.locator("#window-current-count").textContent(),
+    "76"
+  );
+  assert.equal(
+    await page.locator("#window-compare-start").textContent(),
+    "2025-04-01"
+  );
+  assert.equal(
+    await page.locator("#window-compare-end").textContent(),
+    "2025-06-15"
+  );
+  assert.equal(
+    await page.locator("#window-compare-count").textContent(),
+    "76"
+  );
+
+  const download = await clickForDownload(page, "#window-download");
+  assert.equal(download.suggestedFilename(), "reporting-windows.csv");
+  const contents = await saveDownload(download, "reporting-windows.csv");
+  assert.match(
+    contents,
+    /current,Fiscal year to date,2026-04-01,2026-06-15,76,FY 2026\/27/
+  );
+  assert.match(
+    contents,
+    /comparison,Like-for-like prior year,2025-04-01,2025-06-15,76,FY 2025\/26/
+  );
+
+  const receiptDownload = await clickForDownload(page, "#window-receipt");
+  assert.equal(
+    receiptDownload.suggestedFilename(),
+    "reporting-window-analysis-receipt.json"
+  );
+  return saveDownload(
+    receiptDownload,
+    "reporting-window-analysis-receipt.json"
+  );
+}
+
+async function verifyReceiptJourney(page, reportingWindowReceipt) {
+  await showRoute(page, "receipts");
+  await page.locator("#receipt-file").setInputFiles({
+    name: "reporting-window-analysis-receipt.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(reportingWindowReceipt)
+  });
+  await page.locator("#receipt-submit").click();
+  await page.locator("#receipt-result").waitFor({ state: "visible" });
+
+  assert.equal(
+    await page.locator("#receipt-status").textContent(),
+    "Internally consistent"
+  );
+  assert.equal(
+    await page.locator("#receipt-tool").textContent(),
+    "Reporting Window Builder"
+  );
+  assert.equal(await page.locator("#receipt-version").textContent(), "v0.5.0");
+  assert.equal(await page.locator("#receipt-digest-status").textContent(), "Match");
+  assert.equal(await page.locator("#receipt-replay-status").textContent(), "Matched");
+  assert.equal(await page.locator("#receipt-source-panel").isHidden(), true);
+  assert.equal(await page.locator("#receipt-check-list li").count(), 3);
+
+  await showRoute(page, "auditor");
+  await page.locator("#audit-example").click();
+  await page.locator("#audit-result").waitFor({ state: "visible" });
+  const extractReceiptDownload = await clickForDownload(
+    page,
+    "#audit-receipt"
+  );
+  const extractReceipt = await saveDownload(
+    extractReceiptDownload,
+    "extract-audit-analysis-receipt.json"
+  );
+
+  await showRoute(page, "receipts");
+  await page.locator("#receipt-file").setInputFiles({
+    name: "extract-audit-analysis-receipt.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(extractReceipt)
+  });
+  await page.locator("#receipt-submit").click();
+  await page.locator("#receipt-source-panel").waitFor({ state: "visible" });
+  await page.locator("#receipt-source-1").setInputFiles({
+    name: "baseline-synthetic.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(BASELINE_SAMPLE)
+  });
+  await page.locator("#receipt-source-2").setInputFiles({
+    name: "current-synthetic.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(CURRENT_SAMPLE)
+  });
+  await page.waitForFunction(
+    () => document.querySelectorAll("#receipt-source-result-body .source-match").length === 2
+  );
+
+  assert.equal(
+    await page.locator("#receipt-status").textContent(),
+    "Internally consistent"
+  );
+  assert.equal(
+    await page.locator("#receipt-replay-status").textContent(),
+    "Not available"
+  );
+  assert.equal(
+    await page.locator("#receipt-source-result-body tr").count(),
+    2
+  );
+  assert.equal(
+    await page.locator("#receipt-source-summary").textContent(),
+    "2/2 selected · 2 matched · 0 mismatched"
+  );
+
+  await page.locator("#receipt-source-2").setInputFiles({
+    name: "wrong-current.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(BASELINE_SAMPLE)
+  });
+  await page.waitForFunction(
+    () => document.querySelector("#receipt-status")?.textContent === "Source mismatch"
+  );
+  assert.equal(
+    await page.locator("#receipt-source-result-body .source-mismatch").count(),
+    1
+  );
+  assert.equal(
+    await page.locator("#receipt-source-summary").textContent(),
+    "2/2 selected · 1 matched · 1 mismatched"
+  );
+}
+
+async function verifyCapacityJourney(page) {
+  await showRoute(page, "capacity");
+  for (const [selector, value] of [
+    ["#capacity-backlog", "240"],
+    ["#capacity-arrivals", "42"],
+    ["#capacity-current", "38"],
+    ["#capacity-change-week", "5"],
+    ["#capacity-proposed", "50"],
+    ["#capacity-horizon", "26"],
+    ["#capacity-target-wait", "4"]
+  ]) {
+    await page.locator(selector).fill(value);
+  }
+  await page.locator("#capacity-form button[type='submit']").click();
+
+  assert.equal(
+    await page.locator("#capacity-status").textContent(),
+    "Target met at horizon"
+  );
+  assert.equal(
+    await page.locator("#capacity-plan-backlog").textContent(),
+    "80"
+  );
+  assert.equal(
+    await page.locator("#capacity-plan-wait").textContent(),
+    "1.6 wk"
+  );
+  assert.equal(
+    await page.locator("#capacity-current-backlog").textContent(),
+    "344"
+  );
+  assert.equal(
+    await page.locator("#capacity-required").textContent(),
+    "46 / week"
+  );
+  assert.ok(await page.locator("#capacity-table-body tr").count() >= 5);
+
+  const download = await clickForDownload(page, "#capacity-download");
+  assert.equal(download.suggestedFilename(), "waitlist-capacity-projection.csv");
+  const contents = await saveDownload(
+    download,
+    "waitlist-capacity-projection.csv"
+  );
+  assert.ok(
+    contents.startsWith(
+      "week,current_capacity,current_backlog,current_wait_proxy_weeks,planned_capacity,planned_backlog,planned_wait_proxy_weeks\r\n"
+    )
+  );
+  assert.match(contents, /\r\n26,38,344,/);
+}
+
+async function verifyConformanceJourney(page) {
+  await showRoute(page, "validate");
+  await page.locator("#checker-matching-example").click();
+  await page.locator("#checker-result").waitFor({ state: "visible" });
+
+  assert.equal(
+    await page.locator("#checker-status").textContent(),
+    "Uploaded results match"
+  );
+  const expected = Number(
+    await page.locator("#checker-expected").textContent()
+  );
+  const matched = Number(
+    await page.locator("#checker-matched").textContent()
+  );
+  assert.ok(Number.isInteger(expected) && expected > 0);
+  assert.equal(matched, expected);
+  assert.equal(await page.locator("#checker-missing").textContent(), "0");
+  assert.equal(await page.locator("#checker-other").textContent(), "0");
+  assert.equal(
+    await page.locator("#checker-diagnostic-body").textContent(),
+    "No result differences found."
+  );
+
+  const download = await clickForDownload(page, "#checker-download");
+  assert.equal(
+    download.suggestedFilename(),
+    "reporting-results-diagnostics.csv"
+  );
+  const contents = await saveDownload(
+    download,
+    "reporting-results-diagnostics.csv"
+  );
+  assert.equal(
+    contents,
+    "result_type,period_id,result_id,status,expected_value,actual_value\r\n"
+  );
+}
+
+async function verifyAccessibility(page, route) {
+  await showRoute(page, route);
+  const violations = await page.evaluate(async () => {
+    const results = await window.axe.run(document, {
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa"]
+      },
+      resultTypes: ["violations"]
+    });
+    return results.violations.map((violation) => ({
+      id: violation.id,
+      impact: violation.impact,
+      help: violation.help,
+      targets: violation.nodes.map((node) => node.target.join(" "))
+    }));
+  });
+  accessibilityViolations.push(
+    ...violations.map((violation) => ({ route, ...violation }))
+  );
+}
+
+async function verifyMobileNavigation(page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const route of [
+    "overview",
+    "windows",
+    "auditor",
+    "capacity",
+    "validate",
+    "receipts"
+  ]) {
+    await showRoute(page, route);
+    const activeLink = page.locator(`[data-route-link='${route}']`);
+    const box = await activeLink.boundingBox();
+    assert.ok(box, `Mobile navigation link for ${route} must be visible`);
+    assert.ok(
+      box.x >= 0 && box.x + box.width <= 390,
+      `Mobile navigation link for ${route} must remain inside the viewport`
+    );
+  }
+  await verifyAccessibility(page, "receipts");
+}
+
+async function showRoute(page, route) {
+  await page.evaluate((nextRoute) => {
+    window.location.hash = nextRoute;
+  }, route);
+  const routePage = page.locator(`#${route}`);
+  await routePage.waitFor({ state: "visible" });
+  assert.equal(await routePage.getAttribute("hidden"), null);
+  assert.equal(
+    await page
+      .locator(`[data-route-link='${route}']`)
+      .getAttribute("aria-current"),
+    "page"
+  );
+}
+
+function clickForDownload(page, selector) {
+  return Promise.all([
+    page.waitForEvent("download"),
+    page.locator(selector).click()
+  ]).then(([download]) => download);
+}
+
+async function saveDownload(download, filename) {
+  const path = join(temporaryDirectory, filename);
+  await download.saveAs(path);
+  return readFile(path, "utf8");
 }
 
 async function verifyHundredThousandRows(page) {
@@ -284,6 +619,14 @@ async function startStaticServer(root) {
         request.url,
         "http://127.0.0.1"
       ).pathname;
+      if (requestedPath === "/__test__/axe.min.js") {
+        response.writeHead(200, {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/javascript; charset=utf-8"
+        });
+        response.end(axeSource);
+        return;
+      }
       const relativePath =
         requestedPath === "/" ? "index.html" : requestedPath.slice(1);
       const target = resolve(root, decodeURIComponent(relativePath));

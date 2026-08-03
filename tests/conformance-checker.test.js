@@ -23,10 +23,10 @@ test("vendored catalog provenance and digest match the generated module", () => 
   assert.deepEqual(CONFORMANCE_CATALOG, catalog);
   assert.equal(catalog.schema_version, "1.0.0");
   assert.equal(catalog.catalog_id, "health-data-edge-cases");
-  assert.equal(catalog.suite_version, "0.2.0");
+  assert.equal(catalog.suite_version, "0.4.0");
   assert.equal(
     catalog.source_release,
-    "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0"
+    "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0"
   );
   assert.deepEqual(catalog.external_results.metrics.columns, [
     "period_id",

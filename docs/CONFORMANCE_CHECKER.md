@@ -15,7 +15,7 @@ page shows the case principle, the plausible failure it exposes, and the
 expected resolution.
 
 The bundled catalog comes from
-[Health Data Edge Cases v0.2.0](https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0).
+[Health Data Edge Cases v0.4.0](https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0).
 Its version and SHA-256 digest appear beside the inputs.
 
 ## 2. See a failure
