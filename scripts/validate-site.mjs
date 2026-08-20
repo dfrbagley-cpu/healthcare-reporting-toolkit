@@ -257,10 +257,31 @@ check("browser and release gates are fail-closed", () => {
   const releaseLookup = release.indexOf(
     'gh api "repos/$REPOSITORY/releases/tags/$TAG"'
   );
+  const publishedReleaseNoop = release.indexOf(
+    "Published release $TAG already exists at immutable tag $tag_sha"
+  );
+  const releaseTargetGuard = release.indexOf(
+    "Published release $TAG target $release_target does not match tag $tag_sha"
+  );
+  const orphanTagGuard = release.indexOf(
+    "Orphan tag $TAG points to $tag_sha, not $VALIDATED_SHA"
+  );
   assert.ok(tagLookup >= 0, "Release workflow must verify the tag");
   assert.ok(
     releaseLookup > tagLookup,
     "Existing releases may be accepted only after the tag is verified"
+  );
+  assert.ok(
+    releaseTargetGuard > releaseLookup,
+    "A published release's exact target must still match its tag"
+  );
+  assert.ok(
+    publishedReleaseNoop > releaseTargetGuard,
+    "A published release and its immutable tag must be an idempotent no-op"
+  );
+  assert.ok(
+    orphanTagGuard > publishedReleaseNoop,
+    "An orphan tag must still match the exact validated commit"
   );
 });
 
