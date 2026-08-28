@@ -247,8 +247,14 @@ main {
   padding: 4.5rem 0 5.5rem;
 }
 
-.overview-page {
+.page.overview-page {
+  width: 100%;
   padding-top: 0;
+}
+
+.overview-page > :not(.hero) {
+  width: min(var(--content), calc(100% - 2rem));
+  margin-inline: auto;
 }
 
 .hero {
@@ -258,8 +264,8 @@ main {
   gap: clamp(2.5rem, 7vw, 7rem);
   align-items: center;
   min-height: 620px;
-  margin-inline: calc(50% - 50vw);
-  padding: 6rem max(1rem, calc((100vw - var(--content)) / 2));
+  margin-inline: 0;
+  padding: 6rem max(1rem, calc((100% - var(--content)) / 2));
   overflow: hidden;
   color: white;
   background:
@@ -1838,8 +1844,8 @@ input[type="file"]::file-selector-button {
     padding-block: 2.7rem 4rem;
   }
 
-  .overview-page {
-    padding-top: 0;
+  .overview-page > :not(.hero) {
+    width: min(var(--content), calc(100% - 1.2rem));
   }
 
   .hero {

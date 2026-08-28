@@ -49,6 +49,7 @@ try {
   await page.addScriptTag({ url: `${server.url}/__test__/axe.min.js` });
 
   await verifyAccessibility(page, "overview");
+  await verifyOverviewHasNoHorizontalOverflow(page);
   const reportingWindowReceipt = await verifyReportingWindowJourney(page);
   await verifyAccessibility(page, "windows");
   await verifyCapacityJourney(page);
@@ -347,6 +348,37 @@ async function verifyAccessibility(page, route) {
   accessibilityViolations.push(
     ...violations.map((violation) => ({ route, ...violation }))
   );
+}
+
+async function verifyOverviewHasNoHorizontalOverflow(page) {
+  for (const width of [390, 720, 960, 1363]) {
+    await page.setViewportSize({ width, height: width <= 720 ? 844 : 900 });
+    await showRoute(page, "overview");
+
+    const dimensions = await page.evaluate(() => {
+      const root = document.documentElement;
+      const hero = document.querySelector("#overview .hero");
+      const heroBounds = hero.getBoundingClientRect();
+      return {
+        bodyScrollWidth: document.body.scrollWidth,
+        clientWidth: root.clientWidth,
+        heroLeft: heroBounds.left,
+        heroRight: heroBounds.right,
+        rootScrollWidth: root.scrollWidth
+      };
+    });
+
+    assert.ok(
+      dimensions.rootScrollWidth <= dimensions.clientWidth &&
+        dimensions.bodyScrollWidth <= dimensions.clientWidth,
+      `Overview must not overflow horizontally at ${width}px: ${JSON.stringify(dimensions)}`
+    );
+    assert.ok(
+      dimensions.heroLeft >= -0.5 &&
+        dimensions.heroRight <= dimensions.clientWidth + 0.5,
+      `Overview hero must remain inside the document at ${width}px: ${JSON.stringify(dimensions)}`
+    );
+  }
 }
 
 async function verifyMobileNavigation(page) {

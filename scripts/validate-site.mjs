@@ -13,6 +13,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const siteRoot = join(projectRoot, "site");
 const htmlPath = join(siteRoot, "index.html");
 const html = readFileSync(htmlPath, "utf8");
+const styles = readFileSync(join(siteRoot, "styles.css"), "utf8");
 const receiptSchemaPath = join(
   siteRoot,
   "schemas",
@@ -118,6 +119,27 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.match(html, /The detailed CSV can contain operational keys and values/);
   assert.match(html, /Internal consistency is not proof of identity/);
   assert.match(html, /Strict JSON only · 256 KB maximum/);
+});
+
+check("overview full-bleed layout avoids scrollbar-sensitive viewport math", () => {
+  const heroRules = [...styles.matchAll(/\.hero\s*\{([^}]*)\}/gs)].map(
+    (match) => match[1]
+  );
+  assert.ok(heroRules.length > 0, "Expected at least one .hero rule");
+  for (const rule of heroRules) {
+    assert.doesNotMatch(
+      rule,
+      /\b100vw\b/,
+      "Hero layout must use its containing block rather than scrollbar-sensitive 100vw"
+    );
+  }
+  assert.match(styles, /\.page\.overview-page\s*\{[^}]*width:\s*100%/s);
+  assert.match(styles, /\.hero\s*\{[^}]*margin-inline:\s*0/s);
+  assert.doesNotMatch(
+    styles,
+    /(?:^|\n)\s*(?:html|body)\s*\{[^}]*overflow-x:\s*(?:hidden|clip)/gs,
+    "Horizontal overflow must be fixed in layout rather than hidden globally"
+  );
 });
 
 check("sharing metadata identifies the canonical live site", () => {
