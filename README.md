@@ -10,6 +10,38 @@ Open, browser-based tools for common healthcare operational reporting tasks.
 
 [![Healthcare Reporting Toolkit — visible inputs, stated assumptions, exportable results](site/social-card.png)](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/)
 
+## Product case study
+
+**Intended users.** Hospital decision-support and analytics teams that need
+repeatable checks around operational reporting extracts and calculations.
+
+**Problem.** Reporting checks are often manual, difficult to reproduce, and
+risky when work involves sensitive extracts.
+
+**Product decision.** Keep the tools local-first in the browser, with no remote
+storage or telemetry, and make assumptions explicit through exportable,
+versioned analysis receipts with deterministic calculation digests.
+
+**My role.** I framed the users and problems, set product scope and priorities,
+defined workflows, requirements, acceptance criteria, and UX direction, and
+validated the result. AI-assisted development accelerated implementation; I
+retained responsibility for healthcare-domain decisions, product direction,
+and validation.
+
+**Evidence.** Four analysis workflows plus a Receipt Inspector and replay
+utility provide five working browser experiences. Validation covers a
+browser-tested 100,000-row extract-audit path, versioned receipt profiles,
+deterministic calculation digests, automated accessibility checks, and the
+live deployment. The Reporting Results Checker is a controlled consumer of the
+pinned, digest-verified catalogue from
+[Health Data Edge Cases](https://github.com/dfrbagley-cpu/health-data-edge-cases),
+so the two products share definitions without maintaining duplicate contracts.
+
+**Boundaries.** This is independent portfolio work using synthetic data, not
+approved clinical software or a production hospital platform. It contains no
+patient or employer data, licensed reporting standards, or proprietary vendor
+schemas.
+
 ## What is included
 
 | Tool | Question it answers | Output |
