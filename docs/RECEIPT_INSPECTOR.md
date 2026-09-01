@@ -24,6 +24,7 @@ Published compatibility is explicit:
 | 0.3.0 | All four tools | Edge Cases 0.2.0 |
 | 0.4.0 | All four tools | Edge Cases 0.2.0 |
 | 0.5.0 | All four tools | Edge Cases 0.4.0 |
+| 0.6.0 | All four tools | Edge Cases 0.4.0 |
 
 The receipt schema remains 1.0.0. Release profiles add the exact assumptions,
 provenance, and tool-specific invariants needed to interpret that envelope.

@@ -466,7 +466,7 @@
           </div>
           <div class="header-note local-note">
             <strong>Local processing</strong>
-            <span>Selected files stay on this device and are never uploaded by the toolkit.</span>
+            <span>Selected files stay in this browser tab until cleared and are never uploaded by the toolkit.</span>
           </div>
         </header>
 
@@ -532,9 +532,13 @@
               <button id="audit-example" class="button button-quiet" type="button">
                 Use synthetic example
               </button>
+              <button id="audit-clear" class="button button-secondary" type="button">
+                Clear selected data
+              </button>
               <button id="audit-cancel" class="button button-secondary" type="button" hidden>
                 Cancel comparison
               </button>
+              <span id="audit-clear-status" class="action-status" aria-live="polite"></span>
             </div>
 
             <p class="input-limit">
@@ -904,7 +908,7 @@
           </div>
           <div class="header-note local-note">
             <strong>Local processing</strong>
-            <span>Selected result files stay on this device and are never uploaded by the toolkit.</span>
+            <span>Selected result files stay in this browser tab until cleared and are never uploaded by the toolkit.</span>
           </div>
         </header>
 
@@ -979,6 +983,12 @@
                 class="button button-quiet"
                 type="button"
               >Use deliberate mismatch</button>
+              <button
+                id="checker-clear"
+                class="button button-secondary"
+                type="button"
+              >Clear selected data</button>
+              <span id="checker-clear-status" class="action-status" aria-live="polite"></span>
             </div>
           </form>
 
@@ -1332,7 +1342,7 @@
           <div>
             <p>
               The inspector recognizes published receipt profiles from toolkit
-              versions 0.2.0 through 0.5.0. Reporting-window and capacity receipts
+              versions 0.2.0 through 0.6.0. Reporting-window and capacity receipts
               are recalculated; extract and conformance receipts are checked by
               schema, digest, and optional exact source-file fingerprints.
             </p>
@@ -1360,7 +1370,7 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.5.0</span>
+        <span>v0.6.0</span>
       </div>
     </footer>
 

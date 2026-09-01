@@ -44,6 +44,7 @@ const auditState = {
 };
 let auditRunId = 0;
 let activeAuditWorker = null;
+const announcementTimers = new Map();
 const capacityState = { result: null };
 const receiptState = {
   input: null,
@@ -356,6 +357,25 @@ function initializeAuditTool() {
     cancelAuditWorker("Comparison cancelled. Your file selections are retained.");
   });
 
+  byId("audit-clear").addEventListener("click", () => {
+    const cancelledActiveRun = Boolean(activeAuditWorker);
+    cancelAuditWorker();
+    if (!cancelledActiveRun) {
+      auditRunId += 1;
+    }
+    baselineInput.value = "";
+    currentInput.value = "";
+    keyInput.value = "record_id";
+    trimInput.checked = true;
+    auditState.baseline = null;
+    auditState.current = null;
+    invalidateAuditResult();
+    setAuditBusy(false);
+    setText("audit-baseline-name", "No file selected");
+    setText("audit-current-name", "No file selected");
+    announce("audit-clear-status", "Selected files and results cleared");
+  });
+
   byId("audit-download").addEventListener("click", () => {
     if (!auditState.changeLogBlob) {
       return;
@@ -519,11 +539,11 @@ function setAuditBusy(busy) {
     "audit-current",
     "audit-key-columns",
     "audit-trim",
-    "audit-submit",
     "audit-example"
   ]) {
     byId(id).disabled = busy;
   }
+  byId("audit-submit").disabled = busy || typeof Worker !== "function";
   byId("audit-cancel").hidden = !busy;
   byId("audit-progress").hidden = !busy;
   if (!busy) {
@@ -1109,6 +1129,24 @@ function invalidateAuditResult() {
   setText("audit-context", "Awaiting extracts");
   setText("audit-download-note", "");
   setText("audit-action-status", "");
+  for (const id of [
+    "audit-added",
+    "audit-removed",
+    "audit-changed",
+    "audit-cells",
+    "audit-duplicates",
+    "audit-missing-keys",
+    "audit-unchanged"
+  ]) {
+    setText(id, "0");
+  }
+  setText("audit-added-columns", "None");
+  setText("audit-removed-columns", "None");
+  setText("audit-type-changes", "None detected");
+  setText("audit-preview-count", "Showing material differences");
+  renderList("audit-warnings", []);
+  byId("audit-warning-box").hidden = true;
+  byId("audit-diff-body").replaceChildren();
 }
 
 function invalidateCapacityResult() {
@@ -1611,12 +1649,20 @@ async function downloadAnalysisReceipt({
 }
 
 function announce(id, message) {
+  const previousTimer = announcementTimers.get(id);
+  if (previousTimer !== undefined) {
+    window.clearTimeout(previousTimer);
+  }
   setText(id, message);
-  window.setTimeout(() => {
-    if (byId(id).textContent === message) {
-      setText(id, "");
+  const timer = window.setTimeout(() => {
+    if (announcementTimers.get(id) === timer) {
+      announcementTimers.delete(id);
+      if (byId(id).textContent === message) {
+        setText(id, "");
+      }
     }
   }, 2_500);
+  announcementTimers.set(id, timer);
 }
 
 function formatNumber(value, maximumFractionDigits = 0) {
