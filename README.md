@@ -61,6 +61,15 @@ not a hosted reporting platform.
 Open the [live toolkit](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/)
 in a modern browser. There is no installation or account.
 
+For an approved internal deployment, download the self-host ZIP, provenance
+JSON, and `SHA256SUMS` from one versioned GitHub Release, verify the hashes, and
+follow [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md). The ZIP is a durable,
+dependency-free static artifact pinned to one tested commit; do not use the
+moving `main` branch as an operational deployment source. GitHub release
+immutability is recommended where repository governance permits it; the
+workflow also rebuilds from the tagged commit and compares every published
+asset byte-for-byte.
+
 To run a local copy:
 
 ```bash
@@ -81,6 +90,9 @@ Then open `http://localhost:8000`.
 - Duplicate and missing record keys are excluded rather than guessed.
 - Extract analysis receipts contain source fingerprints and aggregate findings,
   but omit filenames, column names, row keys, and cell values.
+- The Extract Change Auditor and Reporting Results Checker provide explicit
+  **Clear selected data** actions. Use them after each session; closing the tab
+  is an additional end-of-session control.
 - Conformance checks use only a bundled synthetic contract catalog. Uploaded
   result exports and detailed diagnostics remain local to the browser.
 
@@ -110,7 +122,7 @@ accuracy, authorship, approval, or when a calculation occurred. Review a
 receipt before sharing it because even aggregate metadata can be sensitive.
 
 The local [Receipt Inspector and Replay](docs/RECEIPT_INSPECTOR.md) recognizes
-the published 0.2.0 through 0.5.0 receipt profiles. It strictly validates the
+the published 0.2.0 through 0.6.0 receipt profiles. It strictly validates the
 selected profile, recalculates the unkeyed calculation digest, replays
 reporting-window and capacity calculations, and can compare selected source
 files with recorded byte counts and SHA-256 fingerprints. “Internally
@@ -205,6 +217,7 @@ site/
   schemas/                    Published analysis-receipt JSON Schema
 tests/                        Deterministic unit and production-site browser tests
 scripts/validate-site.mjs     Static and boundary validation
+scripts/build-operational-release.mjs  Deterministic self-host release assets
 scripts/vendor-edge-contract.mjs  Catalog vendoring and parity validation
 .github/workflows/            CI and GitHub Pages deployment
 ```
@@ -219,7 +232,9 @@ hand-written contract.
 
 ## Contributing and licence
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the synthetic-data and scope
-boundaries. The code is licensed under [Apache License 2.0](LICENSE).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[PUBLICATION_POLICY.md](PUBLICATION_POLICY.md) for synthetic-data, scope, and
+public/private publication boundaries. The code is licensed under
+[Apache License 2.0](LICENSE).
 
 Created and maintained by [David Bagley](https://github.com/dfrbagley-cpu).

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   canonicalJsonStringify,
@@ -286,33 +287,51 @@ test("accepts released v0.3 reporting-window and capacity profiles", async () =>
   }
 });
 
-test("preserves every published v0.4 receipt profile after the v0.5 release", async () => {
+test("preserves every published v0.4 and v0.5 receipt profile after the v0.6 release", async () => {
   const { receipt: extract } = await extractReceipt();
-  const { receipt: conformance } = await conformanceReceipt();
-  conformance.inputs.contract_catalog = historicalEdgeCatalog();
-
-  const receipts = [
-    await reportingWindowReceipt(),
-    extract,
-    await capacityReceipt(),
-    conformance
-  ];
-  for (const receipt of receipts) {
-    receipt.toolkit_version = "0.4.0";
-    receipt.calculation_digest = await recalculateReceiptDigest(receipt);
-    const inspection = await inspectAnalysisReceipt(serialize(receipt));
-    assert.equal(inspection.structure.status, "valid", receipt.tool.id);
-    assert.equal(inspection.digest.status, "match", receipt.tool.id);
-    assert.equal(
-      inspection.replay.status,
-      ["reporting-window", "waitlist-capacity-planner"].includes(
-        receipt.tool.id
-      )
-        ? "match"
-        : "not-available",
-      receipt.tool.id
-    );
+  for (const version of ["0.4.0", "0.5.0"]) {
+    const { receipt: conformance } = await conformanceReceipt();
+    if (version === "0.4.0") {
+      conformance.inputs.contract_catalog = historicalEdgeCatalog();
+    }
+    const receipts = [
+      await reportingWindowReceipt(),
+      clone(extract),
+      await capacityReceipt(),
+      conformance
+    ];
+    for (const receipt of receipts) {
+      receipt.toolkit_version = version;
+      receipt.calculation_digest = await recalculateReceiptDigest(receipt);
+      const inspection = await inspectAnalysisReceipt(serialize(receipt));
+      assert.equal(inspection.structure.status, "valid", `${version}/${receipt.tool.id}`);
+      assert.equal(inspection.digest.status, "match", `${version}/${receipt.tool.id}`);
+      assert.equal(
+        inspection.replay.status,
+        ["reporting-window", "waitlist-capacity-planner"].includes(
+          receipt.tool.id
+        )
+          ? "match"
+          : "not-available",
+        `${version}/${receipt.tool.id}`
+      );
+    }
   }
+});
+
+test("inspects a receipt emitted by the published v0.5.0 toolkit", async () => {
+  const receiptText = await readFile(
+    new URL("fixtures/reporting-window-receipt-v0.5.0.json", import.meta.url),
+    "utf8"
+  );
+  const receipt = JSON.parse(receiptText);
+  assert.equal(receipt.toolkit_version, "0.5.0");
+
+  const inspection = await inspectAnalysisReceipt(receiptText);
+  assert.equal(inspection.structure.status, "valid");
+  assert.equal(inspection.digest.status, "match");
+  assert.equal(inspection.replay.status, "match");
+  assert.equal(inspection.verdict, "internally-consistent");
 });
 
 test("conformance profile rejects inconsistent counts, pass state, and catalog provenance", async () => {

@@ -31,6 +31,15 @@ const citationMetadata = readFileSync(
   "utf8"
 );
 const changelog = readFileSync(join(projectRoot, "CHANGELOG.md"), "utf8");
+const deploymentGuide = readFileSync(
+  join(projectRoot, "INTERNAL_DEPLOYMENT.md"),
+  "utf8"
+);
+const publicationPolicy = readFileSync(
+  join(projectRoot, "PUBLICATION_POLICY.md"),
+  "utf8"
+);
+const RELEASE_DATE = "2026-09-01";
 const siteFiles = walk(siteRoot);
 const projectFiles = walk(projectRoot);
 
@@ -58,11 +67,16 @@ check("required public files exist", () => {
     join(siteRoot, "js", "workers", "extract-auditor-worker.js"),
     join(siteRoot, "js", "views", "conformance-checker.js"),
     join(projectRoot, "README.md"),
+    join(projectRoot, "INTERNAL_DEPLOYMENT.md"),
+    join(projectRoot, "PUBLICATION_POLICY.md"),
     join(projectRoot, "package-lock.json"),
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md"),
     join(projectRoot, "docs", "CONFORMANCE_CHECKER.md"),
     join(projectRoot, "docs", "RECEIPT_INSPECTOR.md"),
+    join(projectRoot, "scripts", "build-operational-release.mjs"),
+    join(projectRoot, "scripts", "lib", "deterministic-zip.mjs"),
+    join(projectRoot, "tests", "operational-release.test.js"),
     join(
       projectRoot,
       "tests",
@@ -91,6 +105,8 @@ check("HTML declares core accessibility and security metadata", () => {
   for (const id of [
     "audit-submit",
     "audit-cancel",
+    "audit-clear",
+    "audit-clear-status",
     "audit-progress",
     "audit-progress-bar",
     "audit-progress-phase",
@@ -207,11 +223,14 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
     citationMetadata,
     new RegExp(`^version: "${TOOLKIT_VERSION.replaceAll(".", "\\.")}"$`, "m")
   );
-  assert.match(citationMetadata, /^date-released: "2026-08-03"$/m);
+  assert.match(
+    citationMetadata,
+    new RegExp(`^date-released: "${RELEASE_DATE}"$`, "m")
+  );
   assert.match(
     changelog,
     new RegExp(
-      `^## \\[${TOOLKIT_VERSION.replaceAll(".", "\\.")}\\] - 2026-08-03$`,
+      `^## \\[${TOOLKIT_VERSION.replaceAll(".", "\\.")}\\] - ${RELEASE_DATE}$`,
       "m"
     )
   );
@@ -234,6 +253,13 @@ check("analysis-receipt contract and release metadata are synchronized", () => {
   ]) {
     assert.match(html, new RegExp(`\\sid="${id}"`));
   }
+  for (const id of ["checker-clear", "checker-clear-status"]) {
+    assert.match(html, new RegExp(`\\sid="${id}"`));
+  }
+  assert.equal(
+    packageMetadata.scripts["package:release"],
+    "node scripts/build-operational-release.mjs"
+  );
   assert.equal(
     receiptSchema.properties.tool.properties.id.enum.length,
     4,
@@ -254,6 +280,10 @@ check("browser and release gates are fail-closed", () => {
     join(projectRoot, ".github", "workflows", "release.yml"),
     "utf8"
   );
+  const releaseBuilder = readFileSync(
+    join(projectRoot, "scripts", "build-operational-release.mjs"),
+    "utf8"
+  );
   const pages = readFileSync(
     join(projectRoot, ".github", "workflows", "pages.yml"),
     "utf8"
@@ -265,6 +295,17 @@ check("browser and release gates are fail-closed", () => {
   assert.match(ci, /Chrome 100,000-row extract audit/);
   assert.match(ci, /npm ci --ignore-scripts/);
   assert.match(ci, /CHROME_PATH="\$chrome_path" npm run test:browser/);
+  assert.match(ci, /Require a version bump for deployable site changes/);
+  assert.match(ci, /gh api --paginate/);
+  assert.match(ci, /git ls-remote --exit-code --tags origin/);
+  assert.match(ci, /elif \[\[ "\$tag_status" -ne 2 \]\]/);
+  assert.match(ci, /release-provenance\.json/);
+  assert.match(ci, /Published provenance and \$tag resolve to different commits/);
+  assert.match(
+    ci,
+    /Published release target and provenance resolve to different commits/
+  );
+  assert.match(ci, /git diff --quiet "\$anchor_commit" HEAD -- site/);
   assert.match(browserTest, /verifyReceiptJourney\(page, reportingWindowReceipt\)/);
   assert.match(browserTest, /verifyAccessibility\(page, "receipts"\)/);
   assert.match(pages, /workflow_run:/);
@@ -273,37 +314,65 @@ check("browser and release gates are fail-closed", () => {
   assert.match(pages, /TESTED_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
   assert.match(pages, /test "\$current_sha" = "\$TESTED_SHA"/);
 
-  const tagLookup = release.indexOf(
-    'gh api "repos/$REPOSITORY/git/ref/tags/$TAG"'
+  assert.match(release, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(release, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(release, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
+  assert.match(release, /test "\$\(git rev-parse HEAD\)" = "\$VALIDATED_SHA"/);
+  assert.match(release, /git diff --quiet "\$tag" "\$VALIDATED_SHA" -- site/);
+  assert.match(release, /gh api --paginate/);
+  assert.match(
+    release,
+    /gh api "repos\/\$REPOSITORY\/commits\/\$release_target" --jq '\.sha'/
   );
-  const releaseLookup = release.indexOf(
-    'gh api "repos/$REPOSITORY/releases/tags/$TAG"'
+  assert.match(release, /"\$release_target_sha" == "\$tag_sha"/);
+  assert.match(release, /"\$release_target_sha" == "\$VALIDATED_SHA"/);
+  assert.match(release, /npm run package:release --/);
+  assert.match(release, /--repository-url "\$GITHUB_SERVER_URL\/\$REPOSITORY"/);
+  assert.match(release, /git worktree add --detach "\$tagged_source" "\$tag_sha"/);
+  assert.match(
+    release,
+    /cmp "\$expected_directory\/\$name" "\$destination\/\$name"/
   );
-  const publishedReleaseNoop = release.indexOf(
-    "Published release $TAG already exists at immutable tag $tag_sha"
+  assert.match(
+    release,
+    /expected="\$\(printf '%s\\n' SHA256SUMS "\$provenance_name" "\$zip_name" \| sort\)"/
   );
-  const releaseTargetGuard = release.indexOf(
-    "Published release $TAG target $release_target does not match tag $tag_sha"
+  assert.match(release, /sha256sum --check SHA256SUMS/);
+  assert.match(releaseBuilder, /verifySourceCommit\(root, commit\)/);
+  assert.match(releaseBuilder, /\["rev-parse", "HEAD"\]/);
+  assert.match(releaseBuilder, /"diff", "--quiet", commit/);
+  assert.match(releaseBuilder, /"ls-files",\s*"--others"/s);
+
+  const publishedVerification = release.indexOf(
+    '"$RUNNER_TEMP/published-assets" "$tag_sha" "$expected_assets"'
   );
-  const orphanTagGuard = release.indexOf(
-    "Orphan tag $TAG points to $tag_sha, not $VALIDATED_SHA"
+  const publishedNoop = release.indexOf(
+    "Published release $tag and its three assets are verified; nothing to do."
   );
-  assert.ok(tagLookup >= 0, "Release workflow must verify the tag");
+  const draftCreation = release.indexOf("-F draft=true");
+  const assetUpload = release.indexOf('gh release upload "$tag"');
+  const uploadedVerification = release.indexOf(
+    '"$RUNNER_TEMP/uploaded-assets" "$VALIDATED_SHA" "$ASSET_DIR"'
+  );
+  const publishRelease = release.indexOf("-F draft=false");
+  const finalVerification = release.lastIndexOf(
+    '"$RUNNER_TEMP/published-assets" "$VALIDATED_SHA" "$ASSET_DIR"'
+  );
   assert.ok(
-    releaseLookup > tagLookup,
-    "Existing releases may be accepted only after the tag is verified"
+    publishedVerification >= 0 && publishedNoop > publishedVerification,
+    "An existing published release may no-op only after all assets are verified"
   );
   assert.ok(
-    releaseTargetGuard > releaseLookup,
-    "A published release's exact target must still match its tag"
+    draftCreation >= 0 && assetUpload > draftCreation,
+    "A new release must remain a draft while assets are uploaded"
   );
   assert.ok(
-    publishedReleaseNoop > releaseTargetGuard,
-    "A published release and its immutable tag must be an idempotent no-op"
+    uploadedVerification > assetUpload && publishRelease > uploadedVerification,
+    "Uploaded assets must be verified before the release is published"
   );
   assert.ok(
-    orphanTagGuard > publishedReleaseNoop,
-    "An orphan tag must still match the exact validated commit"
+    finalVerification > publishRelease,
+    "Published assets must receive a final provenance and checksum verification"
   );
 });
 
@@ -444,26 +513,22 @@ check("external links use HTTPS and opener protection", () => {
   assert.doesNotMatch(html, /href="http:\/\//);
 });
 
-check("repository boundary scan is clean", () => {
-  const forbiddenTerms = [
-    new RegExp(["St", "\\.?\\s*Joseph(?:'s)?"].join(""), "i"),
-    new RegExp(`\\b${["SJ", "HH"].join("")}\\b`, "i"),
-    new RegExp(`\\b${["Dove", "tale"].join("")}\\b`, "i"),
-    new RegExp(`\\b${["Iron", "works"].join("")}\\b`, "i"),
-    new RegExp(`\\b${["Acland", "\\s+Martin"].join("")}\\b`, "i"),
-    new RegExp(`\\b${["health-reporting-", "engine"].join("")}\\b`, "i")
-  ];
-  const secretPatterns = [
+check("generic publication safety scan is clean", () => {
+  const unsafePatterns = [
     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
     new RegExp(`\\b${["gh", "p_"].join("")}[A-Za-z0-9]{20,}\\b`),
     new RegExp(`\\b${["github_", "pat_"].join("")}[A-Za-z0-9_]{20,}\\b`),
     new RegExp(`\\b${["s", "k-"].join("")}[A-Za-z0-9]{20,}\\b`),
     new RegExp(["@gmail", "[.]com\\b"].join(""), "i"),
-    new RegExp(["/(?:work", "space|ro", "ot)/"].join(""))
+    /\/(?:workspace|root)\//,
+    /\/(?:Users|home)\/[A-Za-z0-9._-]+\//,
+    /\b[A-Za-z]:\\(?:Users|Documents and Settings)\\/i,
+    /\b(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql):\/\/[^\s]+/i,
+    /\b(?:Server|Data Source)=[^;\r\n]+;[^\r\n]*(?:Password|Pwd)=/i
   ];
   for (const file of projectFiles.filter(isTextFile)) {
     const source = readFileSync(file, "utf8");
-    for (const pattern of [...forbiddenTerms, ...secretPatterns]) {
+    for (const pattern of unsafePatterns) {
       assert.doesNotMatch(
         source,
         pattern,
@@ -471,6 +536,16 @@ check("repository boundary scan is clean", () => {
       );
     }
   }
+});
+
+check("public release and deployment policy are explicit", () => {
+  assert.match(publicationPolicy, /separate,\s*private configuration/i);
+  assert.match(publicationPolicy, /Do not commit that configuration/i);
+  assert.match(deploymentGuide, /file:\/\/\//);
+  assert.match(deploymentGuide, /frame-ancestors 'none'/);
+  assert.match(deploymentGuide, /Clear selected data/);
+  assert.match(deploymentGuide, /rollback/i);
+  assert.match(deploymentGuide, /SHA256SUMS/);
 });
 
 console.log(`Validated ${checks.length} site and publication checks:`);

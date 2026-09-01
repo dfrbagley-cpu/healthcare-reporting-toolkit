@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here.
 
+## [0.6.0] - 2026-09-01
+
+### Added
+
+- Explicit **Clear selected data** controls for the Extract Change Auditor and
+  Reporting Results Checker, including stale asynchronous-work invalidation and
+  complete in-tab result cleanup.
+- A deterministic, fixed-timestamp self-host ZIP with an embedded per-file
+  release manifest, plus separate provenance JSON and `SHA256SUMS` release
+  assets.
+- Byte-for-byte extraction and repeat-build determinism tests for the
+  operational release package.
+- Internal HTTPS deployment, security-header, MIME-type, verification,
+  rollback, version-pinning, and browser-memory guidance.
+- A generic public-repository publication policy that keeps relationship-
+  specific boundary configuration outside the public project.
+
+### Changed
+
+- Release automation now refuses deployable site changes that reuse a
+  published version, anchors published identity to release provenance and its
+  tag, verifies the exact quality-tested main commit, and creates or verifies
+  exactly three durable release assets idempotently.
+- The Receipt Inspector recognizes 0.6.0 receipts while preserving every
+  published 0.2.0 through 0.5.0 profile.
+
 ## [0.5.0] - 2026-08-03
 
 ### Added
@@ -95,6 +121,7 @@ All notable changes to this project are documented here.
 - Strict UTF-8 CSV loading, malformed-quote rejection, and stale-result invalidation.
 - Canonical sharing metadata, a privacy-safe social card, and explicit project attribution.
 
+[0.6.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.3.0

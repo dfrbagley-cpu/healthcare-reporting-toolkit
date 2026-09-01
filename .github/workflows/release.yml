@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
@@ -62,26 +62,36 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Read and validate version
+      - name: Read version and guard deployable identity
         if: steps.head.outputs.current == 'true'
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${{ github.event.workflow_run.head_sha }}"
-
-          node <<'JS'
-          const fs = require("node:fs");
-          const { version } = JSON.parse(fs.readFileSync("package.json", "utf8"));
-
-          const semver =
-            /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*))(?:\.(?:(?:0|[1-9]\d*)|(?:\d*[A-Za-z-][0-9A-Za-z-]*)))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
-
-          if (typeof version !== "string" || !semver.test(version)) {
-            throw new Error(`Invalid SemVer in package.json: ${JSON.stringify(version)}`);
+          test "$(git rev-parse HEAD)" = "$VALIDATED_SHA"
+          version="$(node -p 'require("./package.json").version')"
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "::error::Operational releases require a stable semantic version."
+            exit 1
           }
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
 
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
-          JS
+          tag="v$version"
+          tag_error="$RUNNER_TEMP/version-tag.err"
+          if gh api "repos/$REPOSITORY/git/ref/tags/$tag" \
+              >/dev/null 2>"$tag_error"; then
+            git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            if ! git diff --quiet "$tag" "$VALIDATED_SHA" -- site; then
+              echo "::error::Deployable site files changed after $tag. Bump the toolkit version before merging."
+              exit 1
+            fi
+          elif ! grep -q 'HTTP 404' "$tag_error"; then
+            cat "$tag_error" >&2
+            exit 1
+          fi
 
   release:
     needs: prepare
@@ -91,25 +101,56 @@ jobs:
         needs.prepare.outputs.current == 'true'
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write
     env:
+      ASSET_DIR: ${{ runner.temp }}/operational-release-assets
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
       VALIDATED_SHA: ${{ needs.prepare.outputs.sha }}
       VERSION: ${{ needs.prepare.outputs.version }}
 
     steps:
-      - name: Create tag and release idempotently
+      - name: Check out exact validated commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Build deterministic operational assets
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$VALIDATED_SHA"
+          mkdir "$ASSET_DIR"
+          npm run package:release -- \
+            --commit "$VALIDATED_SHA" \
+            --output-dir "$ASSET_DIR" \
+            --repository-url "$GITHUB_SERVER_URL/$REPOSITORY"
 
-          TAG="v$VERSION"
-          [[ "$TAG" =~ ^v[0-9A-Za-z.+-]+$ ]] || {
-            echo "::error::Unsafe tag value."
-            exit 1
-          }
+          zip_name="healthcare-reporting-toolkit-v$VERSION.zip"
+          provenance_name="healthcare-reporting-toolkit-v$VERSION-provenance.json"
+          actual="$(find "$ASSET_DIR" -maxdepth 1 -type f -printf '%f\n' | sort)"
+          expected="$(printf '%s\n' SHA256SUMS "$provenance_name" "$zip_name" | sort)"
+          test "$actual" = "$expected"
+          (
+            cd "$ASSET_DIR"
+            sha256sum --check SHA256SUMS
+          )
+
+      - name: Create or verify operational release
+        env:
+          ZIP_NAME: healthcare-reporting-toolkit-v${{ needs.prepare.outputs.version }}.zip
+          PROVENANCE_NAME: healthcare-reporting-toolkit-v${{ needs.prepare.outputs.version }}-provenance.json
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
 
           main_sha="$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           [[ "$main_sha" == "$VALIDATED_SHA" ]] || {
@@ -117,70 +158,205 @@ jobs:
             exit 0
           }
 
-          ref_error="$RUNNER_TEMP/ref-lookup.err"
           tag_exists=false
           tag_sha=""
-          if gh api "repos/$REPOSITORY/git/ref/tags/$TAG" \
-              >/dev/null 2>"$ref_error"; then
+          tag_error="$RUNNER_TEMP/ref-lookup.err"
+          if gh api "repos/$REPOSITORY/git/ref/tags/$tag" \
+              >/dev/null 2>"$tag_error"; then
             tag_exists=true
-            tag_sha="$(gh api "repos/$REPOSITORY/commits/$TAG" --jq '.sha')"
-          elif grep -q 'HTTP 404' "$ref_error"; then
-            :
-          else
-            cat "$ref_error" >&2
+            tag_sha="$(gh api "repos/$REPOSITORY/commits/$tag" --jq '.sha')"
+          elif ! grep -q 'HTTP 404' "$tag_error"; then
+            cat "$tag_error" >&2
             exit 1
           fi
 
-          release_error="$RUNNER_TEMP/release-lookup.err"
-          if gh api "repos/$REPOSITORY/releases/tags/$TAG" \
-              >/dev/null 2>"$release_error"; then
-            [[ "$tag_exists" == "true" ]] || {
-              echo "::error::Published release $TAG exists but its tag ref is missing."
-              exit 1
-            }
-
-            release_tag="$(
-              gh api "repos/$REPOSITORY/releases/tags/$TAG" --jq '.tag_name'
-            )"
-            [[ "$release_tag" == "$TAG" ]] || {
-              echo "::error::Release lookup returned $release_tag, not $TAG."
-              exit 1
-            }
-
-            release_target="$(
-              gh api "repos/$REPOSITORY/releases/tags/$TAG" --jq '.target_commitish'
-            )"
-            if [[ "$release_target" =~ ^[0-9a-fA-F]{40}$ ]]; then
-              [[ "${tag_sha,,}" == "${release_target,,}" ]] || {
-                echo "::error::Published release $TAG target $release_target does not match tag $tag_sha."
-                exit 1
-              }
-            fi
-
-            echo "::notice::Published release $TAG already exists at immutable tag $tag_sha; nothing to do."
-            exit 0
-          elif ! grep -q 'HTTP 404' "$release_error"; then
-            cat "$release_error" >&2
+          release_ids="$(
+            gh api --paginate "repos/$REPOSITORY/releases?per_page=100" \
+              --jq ".[] | select(.tag_name == \"$tag\") | .id"
+          )"
+          release_count=0
+          if [[ -n "$release_ids" ]]; then
+            release_count="$(wc -l <<< "$release_ids")"
+          fi
+          [[ "$release_count" -le 1 ]] || {
+            echo "::error::Multiple releases use tag $tag."
             exit 1
+          }
+
+          release_id=""
+          release_draft=""
+          release_target_sha=""
+          if [[ "$release_count" -eq 1 ]]; then
+            release_id="$release_ids"
+            release_draft="$(gh api "repos/$REPOSITORY/releases/$release_id" --jq '.draft')"
+            release_target="$(
+              gh api "repos/$REPOSITORY/releases/$release_id" --jq '.target_commitish'
+            )"
+            test -n "$release_target"
+            release_target_sha="$(
+              gh api "repos/$REPOSITORY/commits/$release_target" --jq '.sha'
+            )"
+          fi
+
+          verify_release_assets() {
+            local destination="$1"
+            local source_commit="$2"
+            local expected_directory="$3"
+            mkdir "$destination"
+            local names
+            names="$(
+              gh api "repos/$REPOSITORY/releases/$release_id/assets?per_page=100" \
+                --jq '.[].name' | sort
+            )"
+            local expected
+            expected="$(printf '%s\n' SHA256SUMS "$PROVENANCE_NAME" "$ZIP_NAME" | sort)"
+            [[ "$names" == "$expected" ]] || {
+              echo "::error::Release $tag must contain exactly the three operational assets."
+              exit 1
+            }
+
+            for name in SHA256SUMS "$PROVENANCE_NAME" "$ZIP_NAME"; do
+              asset_id="$(
+                gh api "repos/$REPOSITORY/releases/$release_id/assets?per_page=100" \
+                  --jq ".[] | select(.name == \"$name\") | .id"
+              )"
+              test -n "$asset_id"
+              gh api \
+                -H 'Accept: application/octet-stream' \
+                "repos/$REPOSITORY/releases/assets/$asset_id" \
+                > "$destination/$name"
+            done
+            (
+              cd "$destination"
+              sha256sum --check SHA256SUMS
+            )
+            node --input-type=module - \
+              "$destination" "$source_commit" \
+              "$GITHUB_SERVER_URL/$REPOSITORY" "$VERSION" \
+              "$ZIP_NAME" "$PROVENANCE_NAME" <<'JS'
+          import { createHash } from "node:crypto";
+          import { readFileSync } from "node:fs";
+          import { join } from "node:path";
+
+          const [
+            directory,
+            commit,
+            repository,
+            version,
+            zipName,
+            provenanceName
+          ] = process.argv.slice(2);
+          const provenance = JSON.parse(
+            readFileSync(join(directory, provenanceName), "utf8")
+          );
+          const zip = readFileSync(join(directory, zipName));
+          const digest = createHash("sha256").update(zip).digest("hex");
+          if (
+            provenance.source?.commit !== commit ||
+            provenance.source?.repository !== repository ||
+            provenance.version !== version ||
+            provenance.artifact?.name !== zipName ||
+            provenance.artifact?.sha256 !== digest ||
+            provenance.artifact?.byte_count !== zip.length
+          ) {
+            throw new Error("Release provenance does not match the tagged ZIP.");
+          }
+          JS
+            for name in SHA256SUMS "$PROVENANCE_NAME" "$ZIP_NAME"; do
+              cmp "$expected_directory/$name" "$destination/$name"
+            done
+          }
+
+          if [[ -n "$release_id" && "$release_draft" == "false" ]]; then
+            [[ "$tag_exists" == "true" ]] || {
+              echo "::error::Published release $tag has no tag ref."
+              exit 1
+            }
+            [[ "$release_target_sha" == "$tag_sha" ]] || {
+              echo "::error::Published release target resolves to $release_target_sha, not tagged commit $tag_sha."
+              exit 1
+            }
+            release_immutable="$(
+              gh api "repos/$REPOSITORY/releases/$release_id" --jq '.immutable'
+            )"
+            if [[ "$release_immutable" != "true" ]]; then
+              echo "::notice::GitHub release immutability is recommended for $tag; exact tagged-source asset comparison remains enforced."
+            fi
+            expected_assets="$ASSET_DIR"
+            if [[ "$tag_sha" != "$VALIDATED_SHA" ]]; then
+              tagged_source="$RUNNER_TEMP/tagged-release-source"
+              expected_assets="$RUNNER_TEMP/tagged-release-assets"
+              git cat-file -e "$tag_sha^{commit}"
+              git worktree add --detach "$tagged_source" "$tag_sha"
+              mkdir "$expected_assets"
+              node "$tagged_source/scripts/build-operational-release.mjs" \
+                --commit "$tag_sha" \
+                --output-dir "$expected_assets" \
+                --repository-url "$GITHUB_SERVER_URL/$REPOSITORY"
+            fi
+            verify_release_assets \
+              "$RUNNER_TEMP/published-assets" "$tag_sha" "$expected_assets"
+            echo "::notice::Published release $tag and its three assets are verified; nothing to do."
+            exit 0
           fi
 
           if [[ "$tag_exists" == "true" ]]; then
             [[ "$tag_sha" == "$VALIDATED_SHA" ]] || {
-              echo "::error::Orphan tag $TAG points to $tag_sha, not $VALIDATED_SHA."
+              echo "::error::Unpublished tag $tag points to $tag_sha, not $VALIDATED_SHA."
               exit 1
             }
           else
             gh api --method POST "repos/$REPOSITORY/git/refs" \
-              -f ref="refs/tags/$TAG" \
+              -f ref="refs/tags/$tag" \
               -f sha="$VALIDATED_SHA" >/dev/null
+            tag_sha="$VALIDATED_SHA"
           fi
 
-          gh api --method POST "repos/$REPOSITORY/releases" \
-            -f tag_name="$TAG" \
-            -f target_commitish="$VALIDATED_SHA" \
-            -f name="$TAG" \
-            -F generate_release_notes=true \
-            -F draft=false >/dev/null
+          if [[ -z "$release_id" ]]; then
+            release_id="$(
+              gh api --method POST "repos/$REPOSITORY/releases" \
+                -f tag_name="$tag" \
+                -f target_commitish="$VALIDATED_SHA" \
+                -f name="$tag" \
+                -F generate_release_notes=true \
+                -F draft=true \
+                --jq '.id'
+            )"
+          else
+            [[ "$release_target_sha" == "$VALIDATED_SHA" ]] || {
+              echo "::error::Draft release target resolves to $release_target_sha, not validated commit $VALIDATED_SHA."
+              exit 1
+            }
+          fi
 
-          tag_sha="$(gh api "repos/$REPOSITORY/commits/$TAG" --jq '.sha')"
-          test "$tag_sha" = "$VALIDATED_SHA"
+          uploaded=false
+          for attempt in 1 2 3; do
+            if gh release upload "$tag" \
+                "$ASSET_DIR/$ZIP_NAME" \
+                "$ASSET_DIR/$PROVENANCE_NAME" \
+                "$ASSET_DIR/SHA256SUMS" \
+                --clobber; then
+              uploaded=true
+              break
+            fi
+            sleep "$((attempt * 2))"
+          done
+          [[ "$uploaded" == "true" ]] || {
+            echo "::error::Could not upload the three release assets."
+            exit 1
+          }
+
+          verify_release_assets \
+            "$RUNNER_TEMP/uploaded-assets" "$VALIDATED_SHA" "$ASSET_DIR"
+
+          gh api --method PATCH "repos/$REPOSITORY/releases/$release_id" \
+            -F draft=false >/dev/null
+          test "$(gh api "repos/$REPOSITORY/releases/$release_id" --jq '.draft')" = "false"
+          release_immutable="$(
+            gh api "repos/$REPOSITORY/releases/$release_id" --jq '.immutable'
+          )"
+          if [[ "$release_immutable" != "true" ]]; then
+            echo "::notice::GitHub release immutability is recommended for $tag; exact tagged-source asset comparison remains enforced."
+          fi
+          verify_release_assets \
+            "$RUNNER_TEMP/published-assets" "$VALIDATED_SHA" "$ASSET_DIR"

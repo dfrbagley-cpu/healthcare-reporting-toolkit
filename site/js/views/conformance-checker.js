@@ -22,6 +22,7 @@ const state = {
   result: null
 };
 const loadVersions = { metrics: 0, quality: 0 };
+const announcementTimers = new Map();
 
 export function initializeConformanceChecker() {
   const form = byId("checker-form");
@@ -85,6 +86,10 @@ export function initializeConformanceChecker() {
   });
   byId("checker-failing-example").addEventListener("click", async () => {
     await loadExample("failing");
+  });
+  byId("checker-clear").addEventListener("click", () => {
+    resetLoadedResults();
+    announce("checker-clear-status", "Selected files and results cleared");
   });
   byId("checker-download").addEventListener("click", () => {
     if (!state.result) {
@@ -357,6 +362,17 @@ function invalidateResult() {
   byId("checker-download").disabled = true;
   byId("checker-receipt").disabled = true;
   setText("checker-action-status", "");
+  for (const id of [
+    "checker-expected",
+    "checker-matched",
+    "checker-missing",
+    "checker-other"
+  ]) {
+    setText(id, "0");
+  }
+  setText("checker-result-note", "");
+  setText("checker-diagnostic-count", "Showing result differences");
+  byId("checker-diagnostic-body").replaceChildren();
 }
 
 function resetLoadedResults() {
@@ -416,12 +432,20 @@ function setText(id, value) {
 }
 
 function announce(id, message) {
+  const previousTimer = announcementTimers.get(id);
+  if (previousTimer !== undefined) {
+    window.clearTimeout(previousTimer);
+  }
   setText(id, message);
-  window.setTimeout(() => {
-    if (byId(id).textContent === message) {
-      setText(id, "");
+  const timer = window.setTimeout(() => {
+    if (announcementTimers.get(id) === timer) {
+      announcementTimers.delete(id);
+      if (byId(id).textContent === message) {
+        setText(id, "");
+      }
     }
   }, 2_500);
+  announcementTimers.set(id, timer);
 }
 
 function downloadText(filename, text, contentType) {

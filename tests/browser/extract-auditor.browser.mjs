@@ -13,7 +13,9 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright-core";
+import { CONFORMANCE_CATALOG } from "../../site/js/data/edge-case-contracts.js";
 import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "../../site/js/samples.js";
+import { matchingExampleForCase } from "../../site/js/tools/conformance-checker.js";
 
 const require = createRequire(import.meta.url);
 const axeSource = await readFile(
@@ -163,7 +165,7 @@ async function verifyReceiptJourney(page, reportingWindowReceipt) {
     await page.locator("#receipt-tool").textContent(),
     "Reporting Window Builder"
   );
-  assert.equal(await page.locator("#receipt-version").textContent(), "v0.5.0");
+  assert.equal(await page.locator("#receipt-version").textContent(), "v0.6.0");
   assert.equal(await page.locator("#receipt-digest-status").textContent(), "Match");
   assert.equal(await page.locator("#receipt-replay-status").textContent(), "Matched");
   assert.equal(await page.locator("#receipt-source-panel").isHidden(), true);
@@ -326,6 +328,121 @@ async function verifyConformanceJourney(page) {
     contents,
     "result_type,period_id,result_id,status,expected_value,actual_value\r\n"
   );
+
+  const matchingFiles = matchingExampleForCase(
+    CONFORMANCE_CATALOG,
+    CONFORMANCE_CATALOG.cases[0].id
+  );
+  await page.locator("#checker-metrics").setInputFiles({
+    name: "selected-actual-metrics.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(matchingFiles.metricsCsv)
+  });
+  await page.locator("#checker-quality").setInputFiles({
+    name: "selected-actual-quality.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(matchingFiles.qualityCsv)
+  });
+  await page.locator("#checker-metrics-name").filter({ hasText: "rows" }).waitFor();
+  await page.locator("#checker-quality-name").filter({ hasText: "rows" }).waitFor();
+  await page.locator("#checker-form button[type='submit']").click();
+  await page.locator("#checker-result").waitFor({ state: "visible" });
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      metricsFiles: document.querySelector("#checker-metrics").files.length,
+      qualityFiles: document.querySelector("#checker-quality").files.length
+    })),
+    { metricsFiles: 1, qualityFiles: 1 }
+  );
+
+  await page.locator("#checker-clear").click();
+  assert.equal(await page.locator("#checker-result").isHidden(), true);
+  assert.equal(await page.locator("#checker-empty").isVisible(), true);
+  assert.equal(
+    await page.locator("#checker-status").textContent(),
+    "Awaiting results"
+  );
+  assert.equal(
+    await page.locator("#checker-metrics-name").textContent(),
+    "No file selected"
+  );
+  assert.equal(
+    await page.locator("#checker-quality-name").textContent(),
+    "No file selected"
+  );
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      metricsFiles: document.querySelector("#checker-metrics").files.length,
+      qualityFiles: document.querySelector("#checker-quality").files.length
+    })),
+    { metricsFiles: 0, qualityFiles: 0 }
+  );
+  assert.equal(await page.locator("#checker-diagnostic-body tr").count(), 0);
+  assert.equal(await page.locator("#checker-download").isDisabled(), true);
+  assert.equal(await page.locator("#checker-receipt").isDisabled(), true);
+  assert.match(
+    await page.locator("#checker-clear-status").textContent(),
+    /Selected files and results cleared/
+  );
+
+  await page.evaluate(() => {
+    const originalArrayBuffer = File.prototype.arrayBuffer;
+    let releaseRead;
+    window.__slowResultReadSettled = false;
+    File.prototype.arrayBuffer = function delayedArrayBuffer() {
+      if (this.name !== "slow-metrics.csv") {
+        return originalArrayBuffer.call(this);
+      }
+      const selectedFile = this;
+      return new Promise((resolvePromise, rejectPromise) => {
+        releaseRead = () => {
+          originalArrayBuffer.call(selectedFile).then(
+            (value) => {
+              window.__slowResultReadSettled = true;
+              resolvePromise(value);
+            },
+            (error) => {
+              window.__slowResultReadSettled = true;
+              rejectPromise(error);
+            }
+          );
+        };
+      });
+    };
+    window.__releaseSlowResultRead = () => {
+      if (!releaseRead) {
+        return false;
+      }
+      const release = releaseRead;
+      releaseRead = null;
+      File.prototype.arrayBuffer = originalArrayBuffer;
+      release();
+      return true;
+    };
+  });
+  await page.locator("#checker-metrics").setInputFiles({
+    name: "slow-metrics.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("period_id,metric_id,actual_value\n2026-01,metric,1\n")
+  });
+  await page.locator("#checker-metrics-name").filter({ hasText: "Loading file" }).waitFor();
+  await page.locator("#checker-clear").click();
+  assert.equal(
+    await page.evaluate(() => window.__releaseSlowResultRead()),
+    true,
+    "The delayed file read must be released by the regression test"
+  );
+  await page.waitForFunction(() => window.__slowResultReadSettled === true);
+  await page.waitForTimeout(500);
+  assert.equal(
+    await page.locator("#checker-metrics-name").textContent(),
+    "No file selected",
+    "A cleared asynchronous file read must not repopulate state or the interface"
+  );
+  assert.equal(await page.locator("#checker-result").isHidden(), true);
+  assert.equal(await page.locator("#checker-diagnostic-body tr").count(), 0);
+  assert.equal(await page.locator("#checker-download").isDisabled(), true);
+  assert.equal(await page.locator("#checker-receipt").isDisabled(), true);
 }
 
 async function verifyAccessibility(page, route) {
@@ -585,6 +702,181 @@ async function verifyCancellationAndStaleRunProtection(page) {
     "4 → 4 rows",
     "A terminated older worker must not overwrite the newer result"
   );
+
+  await page.locator("#audit-baseline").setInputFiles({
+    name: "completed-baseline.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(BASELINE_SAMPLE)
+  });
+  await page.locator("#audit-current").setInputFiles({
+    name: "completed-current.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(CURRENT_SAMPLE)
+  });
+  await page.locator("#audit-key-columns").fill("record_id");
+  await page.locator("#audit-submit").click();
+  await page.locator("#audit-result").waitFor({ state: "visible" });
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      baselineFiles: document.querySelector("#audit-baseline").files.length,
+      currentFiles: document.querySelector("#audit-current").files.length
+    })),
+    { baselineFiles: 1, currentFiles: 1 }
+  );
+  assert.equal(await page.locator("#audit-download").isEnabled(), true);
+  assert.equal(await page.locator("#audit-receipt").isEnabled(), true);
+
+  await page.evaluate(() => {
+    const subtlePrototype = Object.getPrototypeOf(window.crypto.subtle);
+    const originalDigest = subtlePrototype.digest;
+    let releaseDigest;
+    window.__staleReceiptDigestReady = false;
+    window.__staleReceiptDigestSettled = false;
+    subtlePrototype.digest = function delayedReceiptDigest(algorithm, data) {
+      const receiver = this;
+      window.__staleReceiptDigestReady = true;
+      return new Promise((resolvePromise, rejectPromise) => {
+        releaseDigest = () => {
+          originalDigest.call(receiver, algorithm, data).then(
+            (value) => {
+              window.__staleReceiptDigestSettled = true;
+              resolvePromise(value);
+            },
+            (error) => {
+              window.__staleReceiptDigestSettled = true;
+              rejectPromise(error);
+            }
+          );
+        };
+      });
+    };
+    window.__releaseStaleReceiptDigest = () => {
+      if (!releaseDigest) {
+        return false;
+      }
+      const release = releaseDigest;
+      releaseDigest = null;
+      subtlePrototype.digest = originalDigest;
+      release();
+      return true;
+    };
+  });
+  const staleReceiptDownloads = [];
+  const recordStaleReceiptDownload = (download) => {
+    staleReceiptDownloads.push(download);
+  };
+  page.on("download", recordStaleReceiptDownload);
+  await page.locator("#audit-receipt").click();
+  await page.waitForFunction(() => window.__staleReceiptDigestReady === true);
+
+  await page.locator("#audit-clear").click();
+  assert.equal(
+    await page.evaluate(() => window.__releaseStaleReceiptDigest()),
+    true,
+    "The delayed receipt digest must be released by the regression test"
+  );
+  await page.waitForFunction(() => window.__staleReceiptDigestSettled === true);
+  await page.waitForTimeout(500);
+  page.off("download", recordStaleReceiptDownload);
+  assert.equal(
+    staleReceiptDownloads.length,
+    0,
+    "Clearing a completed audit must prevent stale receipt generation from downloading"
+  );
+  assert.equal(await page.locator("#audit-result").isHidden(), true);
+  assert.equal(await page.locator("#audit-empty").isVisible(), true);
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      added: document.querySelector("#audit-added").textContent,
+      addedColumns: document.querySelector("#audit-added-columns").textContent,
+      baselineFiles: document.querySelector("#audit-baseline").files.length,
+      changed: document.querySelector("#audit-changed").textContent,
+      currentFiles: document.querySelector("#audit-current").files.length,
+      downloadNote: document.querySelector("#audit-download-note").textContent,
+      keyColumns: document.querySelector("#audit-key-columns").value,
+      previewCount: document.querySelector("#audit-preview-count").textContent,
+      previewRows: document.querySelectorAll("#audit-diff-body tr").length,
+      removedColumns: document.querySelector("#audit-removed-columns").textContent,
+      trimWhitespace: document.querySelector("#audit-trim").checked,
+      typeChanges: document.querySelector("#audit-type-changes").textContent,
+      warningItems: document.querySelectorAll("#audit-warnings li").length
+    })),
+    {
+      added: "0",
+      addedColumns: "None",
+      baselineFiles: 0,
+      changed: "0",
+      currentFiles: 0,
+      downloadNote: "",
+      keyColumns: "record_id",
+      previewCount: "Showing material differences",
+      previewRows: 0,
+      removedColumns: "None",
+      trimWhitespace: true,
+      typeChanges: "None detected",
+      warningItems: 0
+    }
+  );
+  assert.equal(
+    await page.locator("#audit-context").textContent(),
+    "Awaiting extracts"
+  );
+  assert.equal(await page.locator("#audit-download").isDisabled(), true);
+  assert.equal(await page.locator("#audit-receipt").isDisabled(), true);
+
+  await page.locator("#audit-baseline").setInputFiles({
+    name: "sensitive-baseline.csv",
+    mimeType: "text/csv",
+    buffer: baseline
+  });
+  await page.locator("#audit-current").setInputFiles({
+    name: "sensitive-current.csv",
+    mimeType: "text/csv",
+    buffer: current
+  });
+  await page.locator("#audit-key-columns").fill("sensitive_record_key");
+  await page.locator("#audit-submit").click();
+  await page.locator("#audit-cancel").waitFor({ state: "visible" });
+  await page.locator("#audit-clear").click();
+
+  await page.locator("#audit-empty").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#audit-result").isHidden(), true);
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      baselineFiles: document.querySelector("#audit-baseline").files.length,
+      currentFiles: document.querySelector("#audit-current").files.length,
+      keyColumns: document.querySelector("#audit-key-columns").value,
+      previewRows: document.querySelectorAll("#audit-diff-body tr").length
+    })),
+    {
+      baselineFiles: 0,
+      currentFiles: 0,
+      keyColumns: "record_id",
+      previewRows: 0
+    }
+  );
+  assert.equal(
+    await page.locator("#audit-baseline-name").textContent(),
+    "No file selected"
+  );
+  assert.equal(
+    await page.locator("#audit-current-name").textContent(),
+    "No file selected"
+  );
+  assert.match(
+    await page.locator("#audit-clear-status").textContent(),
+    /Selected files and results cleared/
+  );
+  assert.equal(await page.locator("#audit-download").isDisabled(), true);
+  assert.equal(await page.locator("#audit-receipt").isDisabled(), true);
+  await page.waitForTimeout(500);
+  assert.equal(
+    await page.locator("#audit-context").textContent(),
+    "Awaiting extracts",
+    "A cleared worker must not restore stale results"
+  );
+  assert.equal(await page.locator("#audit-download").isDisabled(), true);
+  assert.equal(await page.locator("#audit-receipt").isDisabled(), true);
 }
 
 function buildExtract({ rowCount, valueFor }) {

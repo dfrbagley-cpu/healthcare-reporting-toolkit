@@ -809,7 +809,13 @@ function validateSources(sources, roles) {
 }
 
 function assertSupportedProfile(version, toolId) {
-  const versions = new Set(["0.2.0", "0.3.0", "0.4.0", TOOLKIT_VERSION]);
+  const versions = new Set([
+    "0.2.0",
+    "0.3.0",
+    "0.4.0",
+    "0.5.0",
+    TOOLKIT_VERSION
+  ]);
   if (!versions.has(version)) {
     throw new ReceiptValidationError(
       "$.toolkit_version",

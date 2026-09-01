@@ -1,0 +1,56 @@
+{
+  "$schema": "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/schemas/analysis-receipt.schema.json",
+  "assumptions": [
+    {
+      "id": "calendar-dates-utc",
+      "statement": "Calendar calculations use UTC dates to avoid daylight-saving shifts."
+    },
+    {
+      "id": "inclusive-date-boundaries",
+      "statement": "Reported day counts include both the start and end date."
+    },
+    {
+      "id": "prior-year-calendar-alignment",
+      "statement": "Prior-year comparisons subtract one calendar year and clamp February 29 when needed."
+    },
+    {
+      "id": "no-local-calendar-adjustments",
+      "statement": "The calculation does not adjust for holidays, weekdays, 4-4-5 calendars, or local exclusions."
+    }
+  ],
+  "calculation_digest": "sha256:1a26230a0c8ed941046fc13e37bf649201a6495253d3c4010140bb38f6f3b940",
+  "generated_at": "2026-07-25T12:00:00.000Z",
+  "inputs": {
+    "as_of": "2026-06-15",
+    "comparison_type": "prior_year",
+    "fiscal_start_month": 4,
+    "period_type": "fiscal_ytd"
+  },
+  "limitations": [
+    "This receipt records a local calculation and its stated assumptions.",
+    "It does not prove source accuracy, authorship, approval, or time of creation."
+  ],
+  "outputs": {
+    "comparison_period": {
+      "end": "2025-06-15",
+      "fiscal_year": "FY 2025/26",
+      "inclusive_days": 76,
+      "start": "2025-04-01"
+    },
+    "current_period": {
+      "end": "2026-06-15",
+      "fiscal_year": "FY 2026/27",
+      "inclusive_days": 76,
+      "start": "2026-04-01"
+    }
+  },
+  "receipt_type": "healthcare-reporting-toolkit-analysis-receipt",
+  "schema_version": "1.0.0",
+  "sources": [],
+  "tool": {
+    "id": "reporting-window",
+    "name": "Reporting Window Builder"
+  },
+  "toolkit_version": "0.5.0",
+  "warnings": []
+}
