@@ -338,6 +338,26 @@ check("browser and release gates are fail-closed", () => {
     /expected="\$\(printf '%s\\n' SHA256SUMS "\$provenance_name" "\$zip_name" \| sort\)"/
   );
   assert.match(release, /sha256sum --check SHA256SUMS/);
+  const releaseLines = release.split("\n");
+  const assetDirectoryLines = releaseLines
+    .map((line, index) => ({ line, index }))
+    .filter(
+      ({ line }) =>
+        line ===
+        "          ASSET_DIR: ${{ runner.temp }}/operational-release-assets"
+    );
+  assert.equal(
+    assetDirectoryLines.length,
+    2,
+    "Each release step that uses ASSET_DIR must define it explicitly"
+  );
+  for (const { index } of assetDirectoryLines) {
+    assert.equal(
+      releaseLines[index - 1],
+      "        env:",
+      "runner.temp is available in step env, not job env"
+    );
+  }
   assert.match(releaseBuilder, /verifySourceCommit\(root, commit\)/);
   assert.match(releaseBuilder, /\["rev-parse", "HEAD"\]/);
   assert.match(releaseBuilder, /"diff", "--quiet", commit/);

@@ -105,7 +105,6 @@ jobs:
     permissions:
       contents: write
     env:
-      ASSET_DIR: ${{ runner.temp }}/operational-release-assets
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
       VALIDATED_SHA: ${{ needs.prepare.outputs.sha }}
@@ -125,6 +124,8 @@ jobs:
           node-version: "24"
 
       - name: Build deterministic operational assets
+        env:
+          ASSET_DIR: ${{ runner.temp }}/operational-release-assets
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$VALIDATED_SHA"
@@ -146,6 +147,7 @@ jobs:
 
       - name: Create or verify operational release
         env:
+          ASSET_DIR: ${{ runner.temp }}/operational-release-assets
           ZIP_NAME: healthcare-reporting-toolkit-v${{ needs.prepare.outputs.version }}.zip
           PROVENANCE_NAME: healthcare-reporting-toolkit-v${{ needs.prepare.outputs.version }}-provenance.json
         run: |
