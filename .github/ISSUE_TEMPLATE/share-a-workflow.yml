@@ -1,0 +1,47 @@
+name: Share a reporting workflow
+description: Describe a recurring reporting task that the toolkit could make safer or easier.
+title: "[Workflow] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share the workflow and friction, not protected source material. Use synthetic, independently created examples only. Never include PHI or patient data, employer-confidential information, licensed reporting-standard content, or vendor-proprietary schemas or specifications.
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Recurring workflow
+      description: What reporting task do you repeat, and who performs it?
+    validations:
+      required: true
+  - type: textarea
+    id: current-approach
+    attributes:
+      label: Current approach and friction
+      description: How is the work done now, and where does it become slow, risky, or difficult to review?
+    validations:
+      required: true
+  - type: textarea
+    id: useful-outcome
+    attributes:
+      label: Useful outcome
+      description: What result would make this workflow materially easier or safer?
+    validations:
+      required: true
+  - type: textarea
+    id: synthetic-example
+    attributes:
+      label: Optional synthetic example
+      description: Describe a minimal independently created example without copying real structures, values, or definitions.
+  - type: checkboxes
+    id: publication-boundary
+    attributes:
+      label: Publication boundary
+      options:
+        - label: This submission contains no PHI, patient data, or other personal information.
+          required: true
+        - label: This submission contains no employer-confidential, customer-confidential, or internal operational material.
+          required: true
+        - label: This submission contains no licensed reporting-standard content or vendor-proprietary schemas or specifications.
+          required: true
+        - label: Any example is synthetic and independently created for this submission.
+          required: true

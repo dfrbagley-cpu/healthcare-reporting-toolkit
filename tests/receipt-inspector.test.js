@@ -287,12 +287,14 @@ test("accepts released v0.3 reporting-window and capacity profiles", async () =>
   }
 });
 
-test("preserves every published v0.4 and v0.5 receipt profile after the v0.6 release", async () => {
+test("preserves every published v0.4, v0.5, and v0.6 receipt profile after the v0.6.1 release", async () => {
   const { receipt: extract } = await extractReceipt();
-  for (const version of ["0.4.0", "0.5.0"]) {
+  for (const version of ["0.4.0", "0.5.0", "0.6.0"]) {
     const { receipt: conformance } = await conformanceReceipt();
     if (version === "0.4.0") {
       conformance.inputs.contract_catalog = historicalEdgeCatalog();
+    } else {
+      conformance.inputs.contract_catalog = edgeCatalogV040();
     }
     const receipts = [
       await reportingWindowReceipt(),
@@ -316,6 +318,18 @@ test("preserves every published v0.4 and v0.5 receipt profile after the v0.6 rel
         `${version}/${receipt.tool.id}`
       );
     }
+  }
+});
+
+test("does not reinterpret published v0.5 and v0.6 conformance receipts against the current catalog", async () => {
+  for (const version of ["0.5.0", "0.6.0"]) {
+    const { receipt } = await conformanceReceipt();
+    receipt.toolkit_version = version;
+    receipt.calculation_digest = await recalculateReceiptDigest(receipt);
+    await assert.rejects(
+      inspectAnalysisReceipt(serialize(receipt)),
+      /inputs\.contract_catalog/
+    );
   }
 });
 
@@ -581,6 +595,17 @@ function historicalEdgeCatalog() {
     source_release:
       "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0",
     suite_version: "0.2.0"
+  };
+}
+
+function edgeCatalogV040() {
+  return {
+    catalog_digest:
+      "sha256:b796b52f08aa125821ba7bb22516f4cadbc550b0294f20dbba14b65be84f333b",
+    catalog_id: "health-data-edge-cases",
+    source_release:
+      "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0",
+    suite_version: "0.4.0"
   };
 }
 

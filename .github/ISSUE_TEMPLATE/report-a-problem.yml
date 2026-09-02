@@ -1,0 +1,52 @@
+name: Report a problem
+description: Report a reproducible problem with a toolkit workflow or its documentation.
+title: "[Problem] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve the toolkit. Describe the problem with synthetic, independently created examples only. Never include PHI or patient data, employer-confidential information, licensed reporting-standard content, or vendor-proprietary schemas or specifications.
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Toolkit area
+      options:
+        - Extract Change Auditor
+        - Reporting Window Builder
+        - Waitlist Capacity Planner
+        - Reporting Results Checker
+        - Receipt Inspector and Replay
+        - Documentation or deployment
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Include concise steps and non-sensitive output that reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: Chrome 151 on Windows 11
+  - type: checkboxes
+    id: publication-boundary
+    attributes:
+      label: Publication boundary
+      options:
+        - label: This report contains no PHI, patient data, or other personal information.
+          required: true
+        - label: This report contains no employer-confidential, customer-confidential, or internal operational material.
+          required: true
+        - label: This report contains no licensed reporting-standard content or vendor-proprietary schemas or specifications.
+          required: true
+        - label: Any example is synthetic and independently created for this report.
+          required: true

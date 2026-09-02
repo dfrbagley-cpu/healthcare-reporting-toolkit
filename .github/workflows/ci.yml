@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  EDGE_CONTRACT_RELEASE: https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0
-  EDGE_CONTRACT_URL: https://raw.githubusercontent.com/dfrbagley-cpu/health-data-edge-cases/v0.4.0/docs/contracts/catalog-v1.json
+  EDGE_CONTRACT_RELEASE: https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.5.1
+  EDGE_CONTRACT_URL: https://raw.githubusercontent.com/dfrbagley-cpu/health-data-edge-cases/v0.5.1/docs/contracts/catalog-v1.json
 
 jobs:
   validate:
@@ -163,7 +163,7 @@ jobs:
       - name: Verify pinned edge-suite release catalog
         if: matrix.node-version == 24
         env:
-          CATALOG_PATH: ${{ runner.temp }}/health-data-edge-cases-v0.4.0-catalog.json
+          CATALOG_PATH: ${{ runner.temp }}/health-data-edge-cases-v0.5.1-catalog.json
         run: |
           set -euo pipefail
           echo "Verifying catalog published by $EDGE_CONTRACT_RELEASE"

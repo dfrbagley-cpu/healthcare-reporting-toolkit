@@ -77,7 +77,7 @@ function initializeNavigation() {
     });
     document.title =
       route === "overview"
-        ? "Healthcare Reporting Toolkit"
+        ? "CSV Extract Change Auditor | Healthcare Reporting Toolkit"
         : `${document.querySelector(`#${route} h1`).textContent} | Healthcare Reporting Toolkit`;
   };
 

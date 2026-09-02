@@ -18,39 +18,39 @@
     <rect width="62" height="62" rx="14" fill="#bfe1d8"/>
     <text x="31" y="40" fill="#0b2838" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" text-anchor="middle">HR</text>
     <text x="82" y="25" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700">Healthcare Reporting</text>
-    <text x="82" y="51" fill="#bcd0d7" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="2">OPEN TOOLKIT</text>
+    <text x="82" y="51" fill="#bcd0d7" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="2">LOCAL CSV CHANGE AUDIT</text>
   </g>
 
   <g transform="translate(72 205)">
     <text fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="65" font-weight="700">
-      <tspan x="0" y="0">Make reporting logic</tspan>
-      <tspan x="0" y="78">easier to check.</tspan>
+      <tspan x="0" y="0">Catch extract changes</tspan>
+      <tspan x="0" y="78">before they reach a report.</tspan>
     </text>
     <text x="0" y="137" fill="#c9d8dd" font-family="Arial, Helvetica, sans-serif" font-size="25">
-      Visible inputs. Stated assumptions. Exportable results.
+      Compare two CSV snapshots locally. No uploads or analytics.
     </text>
   </g>
 
   <g transform="translate(72 485)" font-family="Arial, Helvetica, sans-serif">
     <g>
       <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
-      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">01 · PERIODS</text>
-      <text x="22" y="55" fill="#ffffff" font-size="16">Align reporting windows</text>
+      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">01 · SCHEMA</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Spot column drift</text>
     </g>
     <g transform="translate(270)">
       <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
-      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">02 · EXTRACTS</text>
-      <text x="22" y="55" fill="#ffffff" font-size="16">Audit CSV changes</text>
+      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">02 · RECORDS</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Find added and changed rows</text>
     </g>
     <g transform="translate(540)">
       <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
-      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">03 · CAPACITY</text>
-      <text x="22" y="55" fill="#ffffff" font-size="16">Test waitlist scenarios</text>
+      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">03 · KEYS</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Flag duplicates and blanks</text>
     </g>
     <g transform="translate(810)">
       <rect width="250" height="74" rx="12" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".15"/>
-      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">04 · VALIDATE</text>
-      <text x="22" y="55" fill="#ffffff" font-size="16">Check result contracts</text>
+      <text x="22" y="31" fill="#8bd2c2" font-size="15" font-weight="700" letter-spacing="1.5">04 · RECEIPT</text>
+      <text x="22" y="55" fill="#ffffff" font-size="16">Export a reviewable record</text>
     </g>
   </g>
 
