@@ -357,7 +357,7 @@ main {
 }
 
 .button:disabled {
-  color: #6c7e84;
+  color: var(--ink-soft);
   background: #eef2f1;
   border-color: var(--line);
   box-shadow: none;

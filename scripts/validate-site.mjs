@@ -171,6 +171,34 @@ check("overview full-bleed layout avoids scrollbar-sensitive viewport math", () 
   );
 });
 
+check("disabled button text meets WCAG AA contrast", () => {
+  const rule = styles.match(/\.button:disabled\s*\{([^}]*)\}/s)?.[1];
+  assert.ok(rule, "Expected a shared .button:disabled rule");
+
+  const foregroundVariable = rule.match(
+    /(?:^|;)\s*color:\s*var\((--[\w-]+)\)\s*;/
+  )?.[1];
+  const background = rule.match(
+    /(?:^|;)\s*background:\s*(#[\da-f]{6})\s*;/i
+  )?.[1];
+  const variables = Object.fromEntries(
+    [...styles.matchAll(/(--[\w-]+):\s*(#[\da-f]{6})\s*;/gi)].map(
+      ([, name, value]) => [name, value]
+    )
+  );
+  const foreground = variables[foregroundVariable];
+
+  assert.ok(foreground, "Disabled button text must resolve to a hex color variable");
+  assert.ok(background, "Disabled button background must be a six-digit hex color");
+  assert.ok(
+    contrastRatio(foreground, background) >= 4.5,
+    `Disabled button contrast must be at least 4.5:1; got ${contrastRatio(
+      foreground,
+      background
+    ).toFixed(3)}:1`
+  );
+});
+
 check("sharing metadata identifies the canonical live site", () => {
   const canonical =
     "https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/";
@@ -635,4 +663,24 @@ function isTextFile(path) {
     ".txt",
     ".yml"
   ].some((extension) => path.endsWith(extension)) || path.endsWith("NOTICE");
+}
+
+function contrastRatio(foreground, background) {
+  const [lighter, darker] = [foreground, background]
+    .map(relativeLuminance)
+    .sort((left, right) => right - left);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function relativeLuminance(hexColor) {
+  const channels = hexColor
+    .slice(1)
+    .match(/.{2}/g)
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) =>
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4
+    );
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }
