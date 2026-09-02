@@ -9,8 +9,9 @@ on:
 permissions: {}
 
 concurrency:
-  group: validated-release
+  group: validated-release-${{ github.event.workflow_run.event }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare:

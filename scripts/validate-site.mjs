@@ -370,12 +370,26 @@ check("browser and release gates are fail-closed", () => {
   assert.match(browserTest, /verifyAccessibility\(page, "receipts"\)/);
   assert.match(pages, /workflow_run:/);
   assert.match(pages, /workflows: \["Quality gates"\]/);
+  assert.match(pages, /branches: \[main\]/);
   assert.match(pages, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(pages, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(pages, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(
+    pages,
+    /group: github-pages-\$\{\{ github\.event\.workflow_run\.event \}\}-\$\{\{ github\.event\.workflow_run\.head_branch \}\}/
+  );
+  assert.match(pages, /concurrency:[\s\S]*?queue: max[\s\S]*?jobs:/);
   assert.match(pages, /TESTED_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
   assert.match(pages, /test "\$current_sha" = "\$TESTED_SHA"/);
 
   assert.match(release, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(release, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(release, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(
+    release,
+    /group: validated-release-\$\{\{ github\.event\.workflow_run\.event \}\}-\$\{\{ github\.event\.workflow_run\.head_branch \}\}/
+  );
+  assert.match(release, /concurrency:[\s\S]*?queue: max[\s\S]*?jobs:/);
   assert.match(release, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
   assert.match(release, /test "\$\(git rev-parse HEAD\)" = "\$VALIDATED_SHA"/);
   assert.match(release, /git diff --quiet "\$tag" "\$VALIDATED_SHA" -- site/);
