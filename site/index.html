@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="Transparent browser-based tools for healthcare reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
+      content="Catch changed records and schema drift before they reach a healthcare report. Compare two CSV extracts locally in your browser—no uploads, accounts, or analytics."
     >
     <meta name="author" content="David Bagley">
     <meta name="referrer" content="no-referrer">
@@ -16,10 +16,10 @@
     >
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Healthcare Reporting Toolkit">
-    <meta property="og:title" content="Healthcare Reporting Toolkit">
+    <meta property="og:title" content="Catch CSV extract changes before they reach a report">
     <meta
       property="og:description"
-      content="Transparent browser-based tools for reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
+      content="Compare two CSV extracts locally in your browser. No uploads, accounts, or analytics."
     >
     <meta
       property="og:url"
@@ -33,13 +33,13 @@
     <meta property="og:image:height" content="630">
     <meta
       property="og:image:alt"
-      content="Healthcare Reporting Toolkit: reporting periods, extract changes, waitlist capacity, and result validation."
+      content="Healthcare Reporting Toolkit: catch changed records and schema drift before they reach a healthcare report."
     >
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Healthcare Reporting Toolkit">
+    <meta name="twitter:title" content="Catch CSV extract changes before they reach a report">
     <meta
       name="twitter:description"
-      content="Transparent browser-based tools for reporting periods, extract changes, waitlist capacity scenarios, and synthetic conformance checks."
+      content="Compare two CSV extracts locally in your browser. No uploads, accounts, or analytics."
     >
     <meta
       name="twitter:image"
@@ -49,7 +49,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'self'"
     >
-    <title>Healthcare Reporting Toolkit</title>
+    <title>CSV Extract Change Auditor | Healthcare Reporting Toolkit</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
     <script type="module" src="js/app.js"></script>
@@ -86,21 +86,15 @@
       <section id="overview" class="page overview-page" data-page>
         <div class="hero">
           <div class="hero-copy">
-            <p class="eyebrow">Small tools. Explicit assumptions.</p>
-            <h1>Make reporting logic easier to check.</h1>
+            <p class="eyebrow">Local CSV change audit</p>
+            <h1>Catch changed records and schema drift before they reach a healthcare report.</h1>
             <p class="hero-lede">
-              Four focused utilities for operational reporting work that often
-              starts in a spreadsheet: align periods, audit extract changes,
-              test waitlist capacity scenarios, and validate result exports
-              against known synthetic cases.
+              Compare two CSV extracts locally in your browser. No uploads,
+              accounts, or analytics.
             </p>
             <div class="hero-actions">
-              <a class="button button-primary" href="#windows">Open first tool</a>
-              <a
-                class="button button-secondary"
-                href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
-                rel="noopener noreferrer"
-              >Inspect the code</a>
+              <a class="button button-primary" href="#auditor">Try the synthetic extract audit</a>
+              <a class="button button-secondary" href="#all-tools">See all reporting tools</a>
             </div>
             <p class="privacy-line">
               <span aria-hidden="true">●</span>
@@ -137,10 +131,10 @@
           </div>
         </div>
 
-        <div class="tool-intro">
+        <div id="all-tools" class="tool-intro">
           <div>
             <p class="section-kicker">Open toolkit</p>
-            <h2>Four narrow, reviewable tools</h2>
+            <h2>Five local, reviewable workflows</h2>
           </div>
           <p>
             Define the period, verify what changed, then test whether capacity
@@ -932,7 +926,7 @@
               </div>
               <code id="checker-catalog-digest">Checking digest</code>
               <a
-                href="https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0"
+                href="https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.5.1"
                 rel="noopener noreferrer"
               >Inspect the pinned contract and fixtures</a>
             </div>
@@ -1342,7 +1336,7 @@
           <div>
             <p>
               The inspector recognizes published receipt profiles from toolkit
-              versions 0.2.0 through 0.6.0. Reporting-window and capacity receipts
+              versions 0.2.0 through 0.6.1. Reporting-window and capacity receipts
               are recalculated; extract and conformance receipts are checked by
               schema, digest, and optional exact source-file fingerprints.
             </p>
@@ -1363,6 +1357,10 @@
       </div>
       <div class="footer-links">
         <a
+          href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/issues/new/choose"
+          rel="noopener noreferrer"
+        >Share feedback</a>
+        <a
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit"
           rel="noopener noreferrer"
         >Source</a>
@@ -1370,8 +1368,13 @@
           href="https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/blob/main/LICENSE"
           rel="noopener noreferrer"
         >Apache 2.0</a>
-        <span>v0.6.0</span>
+        <span>v0.6.1</span>
       </div>
+      <p class="footer-feedback-boundary">
+        Use synthetic examples only—never include PHI, employer-confidential
+        information, licensed reporting-standard content, or vendor-proprietary
+        schemas or specifications.
+      </p>
     </footer>
 
     <noscript>

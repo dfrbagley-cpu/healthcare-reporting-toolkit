@@ -1751,6 +1751,14 @@ input[type="file"]::file-selector-button {
   color: #d7e4e7;
 }
 
+.footer-feedback-boundary {
+  max-width: 390px;
+  margin: 0;
+  color: #afc2c8;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
 @media (max-width: 960px) {
   .header-inner {
     grid-template-columns: 1fr auto;

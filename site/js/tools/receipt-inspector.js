@@ -148,13 +148,21 @@ const TOOL_METADATA = {
 const LEGACY_EXTRACT_ASSUMPTIONS = TOOL_METADATA[
   "extract-change-auditor"
 ].assumptions.filter((assumption) => assumption.id !== "key-column-names-omitted");
-const HISTORICAL_EDGE_CATALOG = Object.freeze({
+const EDGE_CATALOG_V0_2_0 = Object.freeze({
   catalog_digest:
     "sha256:e441ce7779cc30b0b539a7f201e4928cb2f8303ee5de0fd1aac1f29c17143807",
   catalog_id: "health-data-edge-cases",
   source_release:
     "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.2.0",
   suite_version: "0.2.0"
+});
+const EDGE_CATALOG_V0_4_0 = Object.freeze({
+  catalog_digest:
+    "sha256:b796b52f08aa125821ba7bb22516f4cadbc550b0294f20dbba14b65be84f333b",
+  catalog_id: "health-data-edge-cases",
+  source_release:
+    "https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.4.0",
+  suite_version: "0.4.0"
 });
 
 export class ReceiptValidationError extends Error {
@@ -711,11 +719,9 @@ function validateConformanceReceipt(receipt) {
     ["catalog_digest", "catalog_id", "source_release", "suite_version"],
     "$.inputs.contract_catalog"
   );
-  const expectedCatalog = ["0.3.0", "0.4.0"].includes(
+  const expectedCatalog = expectedCatalogForToolkitVersion(
     receipt.toolkit_version
-  )
-    ? HISTORICAL_EDGE_CATALOG
-    : CONFORMANCE_CATALOG;
+  );
   for (const field of [
     "catalog_digest",
     "catalog_id",
@@ -814,6 +820,7 @@ function assertSupportedProfile(version, toolId) {
     "0.3.0",
     "0.4.0",
     "0.5.0",
+    "0.6.0",
     TOOLKIT_VERSION
   ]);
   if (!versions.has(version)) {
@@ -831,6 +838,16 @@ function assertSupportedProfile(version, toolId) {
       "the reporting-results receipt did not exist in toolkit 0.2.0"
     );
   }
+}
+
+function expectedCatalogForToolkitVersion(version) {
+  if (["0.3.0", "0.4.0"].includes(version)) {
+    return EDGE_CATALOG_V0_2_0;
+  }
+  if (["0.5.0", "0.6.0"].includes(version)) {
+    return EDGE_CATALOG_V0_4_0;
+  }
+  return CONFORMANCE_CATALOG;
 }
 
 function reportingWindowInputs(inputs) {

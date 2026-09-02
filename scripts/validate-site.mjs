@@ -39,7 +39,7 @@ const publicationPolicy = readFileSync(
   join(projectRoot, "PUBLICATION_POLICY.md"),
   "utf8"
 );
-const RELEASE_DATE = "2026-09-01";
+const RELEASE_DATE = "2026-09-02";
 const siteFiles = walk(siteRoot);
 const projectFiles = walk(projectRoot);
 
@@ -72,6 +72,9 @@ check("required public files exist", () => {
     join(projectRoot, "package-lock.json"),
     join(projectRoot, "SECURITY.md"),
     join(projectRoot, "CONTRIBUTING.md"),
+    join(projectRoot, ".github", "ISSUE_TEMPLATE", "config.yml"),
+    join(projectRoot, ".github", "ISSUE_TEMPLATE", "report-a-problem.yml"),
+    join(projectRoot, ".github", "ISSUE_TEMPLATE", "share-a-workflow.yml"),
     join(projectRoot, "docs", "CONFORMANCE_CHECKER.md"),
     join(projectRoot, "docs", "RECEIPT_INSPECTOR.md"),
     join(projectRoot, "scripts", "build-operational-release.mjs"),
@@ -135,6 +138,16 @@ check("HTML declares core accessibility and security metadata", () => {
   assert.match(html, /The detailed CSV can contain operational keys and values/);
   assert.match(html, /Internal consistency is not proof of identity/);
   assert.match(html, /Strict JSON only · 256 KB maximum/);
+  assert.match(
+    html,
+    /Catch changed records and schema drift before they reach a healthcare report\./
+  );
+  assert.match(
+    html,
+    /class="button button-primary" href="#auditor">Try the synthetic extract audit/
+  );
+  assert.match(html, /issues\/new\/choose/);
+  assert.match(html, /never include PHI, employer-confidential/i);
 });
 
 check("overview full-bleed layout avoids scrollbar-sensitive viewport math", () => {
@@ -165,6 +178,10 @@ check("sharing metadata identifies the canonical live site", () => {
   assert.match(html, new RegExp(`<meta\\s+property="og:url"\\s+content="${canonical}"`));
   assert.match(html, /property="og:image"[\s\S]*social-card\.png/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
+  assert.match(
+    html,
+    /property="og:title" content="Catch CSV extract changes before they reach a report"/
+  );
 
   const socialCard = readFileSync(join(siteRoot, "social-card.png"));
   assert.equal(
@@ -174,6 +191,21 @@ check("sharing metadata identifies the canonical live site", () => {
   );
   assert.equal(socialCard.readUInt32BE(16), 1200, "Social card width must be 1200");
   assert.equal(socialCard.readUInt32BE(20), 630, "Social card height must be 630");
+});
+
+check("feedback forms enforce the public-data boundary", () => {
+  const issueTemplateRoot = join(projectRoot, ".github", "ISSUE_TEMPLATE");
+  const forms = ["report-a-problem.yml", "share-a-workflow.yml"].map(
+    (filename) => readFileSync(join(issueTemplateRoot, filename), "utf8")
+  );
+  for (const form of forms) {
+    assert.match(form, /no PHI/i);
+    assert.match(form, /no employer-confidential/i);
+    assert.match(form, /no licensed reporting-standard content/i);
+    assert.match(form, /vendor-proprietary schemas or specifications/i);
+    assert.match(form, /synthetic and independently created/i);
+    assert.doesNotMatch(form, /^labels:/m);
+  }
 });
 
 check("analysis-receipt contract and release metadata are synchronized", () => {

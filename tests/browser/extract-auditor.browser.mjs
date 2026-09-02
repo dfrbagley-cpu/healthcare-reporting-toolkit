@@ -50,6 +50,7 @@ try {
   });
   await page.addScriptTag({ url: `${server.url}/__test__/axe.min.js` });
 
+  await verifyAdoptionFrontDoor(page);
   await verifyAccessibility(page, "overview");
   await verifyOverviewHasNoHorizontalOverflow(page);
   const reportingWindowReceipt = await verifyReportingWindowJourney(page);
@@ -92,6 +93,34 @@ const cleanupFailures = cleanupResults
   .map((result) => result.reason);
 if (cleanupFailures.length > 0) {
   throw new AggregateError(cleanupFailures, "Browser-test cleanup failed.");
+}
+
+async function verifyAdoptionFrontDoor(page) {
+  assert.equal(
+    await page.locator("#overview .hero h1").textContent(),
+    "Catch changed records and schema drift before they reach a healthcare report."
+  );
+  assert.equal(
+    await page.locator("#overview .hero .button-primary").getAttribute("href"),
+    "#auditor"
+  );
+  assert.equal(
+    await page.locator("#overview .hero .button-secondary").getAttribute("href"),
+    "#all-tools"
+  );
+  assert.match(
+    await page.locator("meta[name='description']").getAttribute("content"),
+    /Compare two CSV extracts locally in your browser/
+  );
+  assert.match(
+    await page.locator(".footer-feedback-boundary").textContent(),
+    /never include PHI, employer-confidential/i
+  );
+
+  await page.locator("#overview .hero .button-primary").click();
+  await page.locator("#auditor").waitFor({ state: "visible" });
+  assert.equal(new URL(page.url()).hash, "#auditor");
+  await showRoute(page, "overview");
 }
 
 async function verifyReportingWindowJourney(page) {
@@ -165,7 +194,7 @@ async function verifyReceiptJourney(page, reportingWindowReceipt) {
     await page.locator("#receipt-tool").textContent(),
     "Reporting Window Builder"
   );
-  assert.equal(await page.locator("#receipt-version").textContent(), "v0.6.0");
+  assert.equal(await page.locator("#receipt-version").textContent(), "v0.6.1");
   assert.equal(await page.locator("#receipt-digest-status").textContent(), "Match");
   assert.equal(await page.locator("#receipt-replay-status").textContent(), "Matched");
   assert.equal(await page.locator("#receipt-source-panel").isHidden(), true);

@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented here.
 
+## [0.6.1] - 2026-09-02
+
+### Added
+
+- A 60-second synthetic Extract Change Auditor quickstart and a direct local
+  audit call to action on the public landing page.
+- Structured workflow and problem feedback forms with mandatory publication-
+  boundary confirmations for PHI, confidential, licensed, and proprietary
+  material.
+
+### Changed
+
+- Made the Extract Change Auditor the toolkit's public front door while
+  preserving all four analysis tools and the Receipt Inspector and Replay.
+- Updated sharing metadata and the social card around the local CSV-change
+  workflow.
+- Updated the bundled Health Data Edge Cases catalog from v0.4.0 to v0.5.1,
+  retaining all five cases and 72 expectations.
+- Preserved explicit Edge Cases v0.2.0 and v0.4.0 identities when inspecting
+  historical Toolkit receipts; only new v0.6.1 conformance receipts use Edge
+  Cases v0.5.1.
+
+### Unchanged
+
+- Receipt schema version 1.0.0, local-only processing, no telemetry or uploads,
+  and the calculation semantics of the four analysis tools.
+
 ## [0.6.0] - 2026-09-01
 
 ### Added
@@ -121,6 +148,7 @@ All notable changes to this project are documented here.
 - Strict UTF-8 CSV loading, malformed-quote rejection, and stale-result invalidation.
 - Canonical sharing metadata, a privacy-safe social card, and explicit project attribution.
 
+[0.6.1]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.6.1
 [0.6.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.4.0
