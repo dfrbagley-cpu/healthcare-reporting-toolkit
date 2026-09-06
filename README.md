@@ -1,259 +1,115 @@
 # Healthcare Reporting Toolkit
 
 [![Quality gates](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/actions/workflows/ci.yml)
-[![Deploy GitHub Pages](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/actions/workflows/pages.yml/badge.svg)](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/actions/workflows/pages.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-0f766e.svg)](LICENSE)
 
-Catch changed records and schema drift before they reach a healthcare report,
-then use the companion local tools for reporting periods, capacity scenarios,
-result contracts, and receipt inspection.
+**Find changed records and schema drift before they reach a report.**
+Compare two CSV extracts in your browser, inspect the differences, and export a
+reviewable change log. Companion tools handle reporting dates, capacity
+scenarios, result validation, and analysis receipts.
 
-**Live toolkit:** <https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/>
+**[Try the live toolkit](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor)**
+· [Product case study](docs/CASE_STUDY.md)
+· [Contribute](CONTRIBUTING.md)
+· [Download a versioned release](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases)
 
-[![Healthcare Reporting Toolkit — catch CSV extract changes before they reach a report](site/social-card.png)](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor)
+No installation, account, or upload. The application processes selected files
+on your device and has no backend, telemetry, or third-party asset requests.
 
-## Try the Extract Change Auditor in 60 seconds
+[![Actual synthetic extract audit: one added record, one removed, two changed, and separate schema changes](docs/images/extract-audit-example.jpg)](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor)
 
-1. Open the [live synthetic extract audit](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor).
-2. Select **Use synthetic example**. No files or account are required.
-3. Review schema changes, added and removed records, changed cells, and key-integrity warnings.
-4. Download the formula-safe change log or privacy-bounded analysis receipt if you want a reviewable record.
+## See a useful result in 60 seconds
 
-The comparison runs entirely in your browser. Nothing is uploaded, and the
-published site has no backend, account system, telemetry, or third-party asset
-requests.
+1. Open the [Extract Change Auditor](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor).
+2. Select **Use synthetic example**. Leave the record key as `record_id`.
+3. Check the result against the table below, then select **Download change log**.
 
-Have a recurring reporting workflow or find a problem? [Share safe feedback on
-GitHub](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/issues/new/choose).
-Use synthetic, independently created examples only. Never include PHI or
-patient data, employer-confidential information, licensed reporting-standard
-content, or vendor-proprietary schemas or specifications.
+| Expected finding | What changed |
+|---|---|
+| 1 added record | `R-1005` appears in the current extract |
+| 1 removed record | `R-1003` appears only in the baseline |
+| 2 changed records / 2 changed cells | `R-1001` status: `open` → `closed`; `R-1002` wait days: `9` → `11` |
+| 1 unchanged record | `R-1004` has identical shared values |
+| Separate schema changes | Column `owner` added; column `active` removed |
 
-## Product case study
+Both snapshots contain four rows. **A row-count check alone would miss these
+changes.** The [walkthrough](docs/EXTRACT_AUDITOR.md) explains how to interpret
+the differences and choose between a detailed CSV and an aggregate receipt.
 
-**Intended users.** Hospital decision-support and analytics teams that need
-repeatable checks around operational reporting extracts and calculations.
+## Choose a tool
 
-**Problem.** Reporting checks are often manual, difficult to reproduce, and
-risky when work involves sensitive extracts.
-
-**Product decision.** Keep the tools local-first in the browser, with no remote
-storage or telemetry, and make assumptions explicit through exportable,
-versioned analysis receipts with deterministic calculation digests.
-
-**My role.** I framed the users and problems, set product scope and priorities,
-defined workflows, requirements, acceptance criteria, and UX direction, and
-validated the result. AI-assisted development accelerated implementation; I
-retained responsibility for healthcare-domain decisions, product direction,
-and validation.
-
-**Evidence.** Four analysis workflows plus a Receipt Inspector and replay
-utility provide five working browser experiences. Validation covers a
-browser-tested 100,000-row extract-audit path, versioned receipt profiles,
-deterministic calculation digests, automated accessibility checks, and the
-live deployment. The Reporting Results Checker is a controlled consumer of the
-pinned, digest-verified catalogue from
-[Health Data Edge Cases](https://github.com/dfrbagley-cpu/health-data-edge-cases),
-so the two products share definitions without maintaining duplicate contracts.
-
-**Boundaries.** This is independent portfolio work using synthetic data, not
-approved clinical software or a production hospital platform. It contains no
-patient or employer data, licensed reporting standards, or proprietary vendor
-schemas.
-
-## What is included
-
-| Tool | Question it answers | Output |
+| You need to… | Open | What you get |
 |---|---|---|
-| Reporting Window Builder | What exact current and comparison dates should this report use? | Inclusive fiscal, rolling, custom, and like-for-like periods |
-| Extract Change Auditor | What changed between two CSV snapshots? | Responsive worker-based schema and record comparison, bounded preview, key warnings, and a complete change log when within safety limits |
-| Waitlist Capacity Planner | What happens to backlog if demand and capacity continue at these rates? | Current-versus-planned trajectory, wait proxy, and required-capacity estimate |
-| Reporting Results Checker | Do external result exports match a known synthetic reporting contract? | Exact missing, unexpected, and incorrect-value diagnostics |
-| Receipt Inspector and Replay | Is a published toolkit receipt internally consistent, and do selected local files match its fingerprints? | Strict profile validation, digest recalculation, deterministic replay where possible, and optional exact source matching |
+| Compare two CSV snapshots | [Extract Change Auditor](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor) | Schema drift, record differences, key warnings, and change-log export |
+| Make reporting dates explicit | [Reporting Window Builder](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#windows) | Inclusive fiscal, rolling, custom, and like-for-like periods |
+| Assess a capacity change | [Waitlist Capacity Planner](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#capacity) | Current and planned backlog trajectories with stated assumptions |
+| Test aggregate reporting outputs | [Reporting Results Checker](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#validate) | Exact mismatches against a bundled synthetic contract |
+| Check a saved calculation record | [Receipt Inspector and Replay](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#receipts) | Profile validation, digest checks, supported replay, and optional file matching |
 
-The project deliberately avoids authentication, telemetry, remote storage,
-vendor-specific schemas, and opaque scoring. It is a small, inspectable toolkit,
-not a hosted reporting platform.
+## What is verified—and what is not
 
-## Use it
+The [quality gates](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/actions/workflows/ci.yml)
+run deterministic calculation and receipt tests. The Chrome suite exercises all
+five browser experiences, WCAG 2 A/AA automated checks, and a 100,000-row extract
+comparison with cancellation, responsive interaction, and bounded output.
 
-Open the [live toolkit](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/)
-in a modern browser. There is no installation or account.
+This is independent software with synthetic examples. These checks demonstrate
+defined behavior; they do not establish hospital approval, clinical safety,
+production adoption, or full accessibility conformance. Read the
+[product decisions and evidence](docs/CASE_STUDY.md).
+
+## Use your own files or host a copy
+
+Extracts must be UTF-8 comma-delimited CSV with key columns present in both
+files. Values are compared as text. Each file is limited to 10 MB, 100,000 rows,
+200 columns, and 2,000,000 materialized cells. Duplicate and blank keys are
+excluded with warnings, not guessed. The preview is bounded; a complete CSV
+download is refused if its documented output limits are exceeded.
+
+Use your organization's approved software and data-handling process before
+selecting sensitive files. Detailed change logs contain source values; receipts
+omit filenames, headers, record keys, and cell values but can still contain
+sensitive aggregate metadata. See [privacy and calculation limits](docs/TECHNICAL_REFERENCE.md).
 
 For an approved internal deployment, download the self-host ZIP, provenance
-JSON, and `SHA256SUMS` from one versioned GitHub Release, verify the hashes, and
-follow [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md). The ZIP is a durable,
-dependency-free static artifact pinned to one tested commit; do not use the
-moving `main` branch as an operational deployment source. GitHub release
-immutability is recommended where repository governance permits it; the
-workflow also rebuilds from the tagged commit and compares every published
-asset byte-for-byte.
+JSON, and `SHA256SUMS` from the **same versioned release**, verify the hashes,
+and follow [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md). Use a tested release
+instead of the moving `main` branch for operational deployments.
 
-To run a local copy:
+For a local development preview:
 
 ```bash
+git clone https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit.git
+cd healthcare-reporting-toolkit
 python3 -m http.server 8000 --directory site
 ```
 
-Then open `http://localhost:8000`.
+Open `http://localhost:8000`. The site has no runtime dependencies or build step.
 
-## Privacy and security
+## Help improve a real workflow
 
-- The site is static and has no backend.
-- CSV files are parsed on the user's device.
-- Extract parsing and comparison run in a same-origin module worker so the
-  interface remains responsive and cancellation can terminate the computation.
-- The published site makes no API, analytics, font, or asset requests to third parties.
-- A restrictive Content Security Policy disables network connections from the application.
-- Downloaded CSV change logs protect leading spreadsheet-formula characters.
-- Duplicate and missing record keys are excluded rather than guessed.
-- Extract analysis receipts contain source fingerprints and aggregate findings,
-  but omit filenames, column names, row keys, and cell values.
-- The Extract Change Auditor and Reporting Results Checker provide explicit
-  **Clear selected data** actions. Use them after each session; closing the tab
-  is an additional end-of-session control.
-- Conformance checks use only a bundled synthetic contract catalog. Uploaded
-  result exports and detailed diagnostics remain local to the browser.
+Try the synthetic audit, then [report a reproducible problem or share a workflow](https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/issues/new/choose).
+Tell us what you expected, what happened, and what would make the result useful.
+Use independently authored synthetic examples only; never include patient,
+employer-confidential, licensed-standard, or vendor-proprietary material.
 
-These controls do not override an organization's privacy, retention, security,
-or approved-software policies. Inspect and approve the code and deployment
-before using a local copy with sensitive information.
+New contributors can start with a [composite-key tutorial or browser walkthrough](CONTRIBUTING.md#small-contributions-to-start-with).
+Small documentation fixes can go straight to a pull request. Calculation changes
+should include a minimal example and expected result. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup and verification commands.
 
-## Analysis receipts
+## More detail
 
-Every tool can download a versioned JSON analysis receipt. A receipt records
-the normalized inputs, aggregate outputs, warnings, calculation assumptions,
-toolkit version, and a deterministic calculation digest. The public
-[JSON Schema](site/schemas/analysis-receipt.schema.json) defines the contract.
+- [Extract audit walkthrough](docs/EXTRACT_AUDITOR.md)
+- [Results checker: fail → diagnose → correct](docs/CONFORMANCE_CHECKER.md)
+- [Receipt inspection and replay](docs/RECEIPT_INSPECTOR.md)
+- [Technical reference: privacy, receipt contracts, limits, and structure](docs/TECHNICAL_REFERENCE.md)
+- [Release history](CHANGELOG.md) · [Security](SECURITY.md) · [Publication policy](PUBLICATION_POLICY.md)
 
-For extract audits, SHA-256 fingerprints are calculated from the original file
-bytes in the browser. The receipt includes those fingerprints plus file size,
-row count, and column count; it deliberately excludes filenames, headers,
-record keys, and cell values. The ordered key-column choice is represented by
-its count only; key-column names are omitted rather than represented by a
-guessable deterministic fingerprint. Preserve the chosen key columns
-separately if another person must reproduce the comparison exactly. The
-separate change-log CSV does contain row-level differences and must be handled
-according to the source data's sensitivity.
-
-A receipt and its hashes support repeatability; they do not prove source
-accuracy, authorship, approval, or when a calculation occurred. Review a
-receipt before sharing it because even aggregate metadata can be sensitive.
-
-The local [Receipt Inspector and Replay](docs/RECEIPT_INSPECTOR.md) recognizes
-the published 0.2.0 through 0.6.1 receipt profiles. It strictly validates the
-selected profile, recalculates the unkeyed calculation digest, replays
-reporting-window and capacity calculations, and can compare selected source
-files with recorded byte counts and SHA-256 fingerprints. “Internally
-consistent” is deliberately not described as authentic: the schema URL,
-digest field, and recorded timestamp are outside digest coverage, and a person
-can construct a new self-consistent receipt.
-
-Reporting-results receipts contain the pinned edge-suite version and digest,
-selected public case ID, source-file fingerprints, and aggregate mismatch
-counts. They omit filenames, period and result keys, metric and check IDs,
-expected and actual values, and row-level diagnostics. The separate diagnostics
-CSV contains those details and can remain sensitive.
-
-## Reporting-results contract
-
-The Reporting Results Checker consumes the versioned catalog generated by
-[Health Data Edge Cases v0.5.1](https://github.com/dfrbagley-cpu/health-data-edge-cases/releases/tag/v0.5.1).
-The byte-identical JSON catalog is vendored with a generated browser module and
-verified by digest in tests and CI. The live application never fetches a
-contract at runtime.
-
-Select one bundled case and provide:
-
-- `actual_metrics.csv`: `period_id,metric_id,actual_value`
-- `actual_quality.csv`: `check_id,actual_value`
-
-Headers and order are exact. Blank or duplicate keys and malformed rows are
-rejected. Values must be integer text without decimals, exponents, `NaN`, or
-infinity. Missing, unexpected, and incorrect values all prevent a match.
-
-See the [five-minute fail → diagnose → correct tutorial](docs/CONFORMANCE_CHECKER.md).
-
-## Calculation boundaries
-
-The tools are decision support:
-
-- Reporting periods use calendar dates and inclusive boundaries. They do not
-  implement 4-4-5 calendars, holiday calendars, or organization-specific exclusions.
-- Extract values are compared as text. Inferred type changes are screening
-  signals, not a formal schema. Inputs must be UTF-8 comma-delimited CSV.
-  Per-file limits are 10 MB, 100,000 data rows, 200 columns, and 2,000,000
-  materialized cells. The interface retains at most 100 material differences.
-  A complete detailed download is refused—not truncated—above 250,000 rows or
-  48 MB, while aggregate comparison counts remain complete.
-- The waitlist planner uses a deterministic fluid-queue approximation with
-  constant average arrivals and capacity. It is not a patient-level prediction,
-  discrete-event simulation, or clinical prioritization model. Its recommended
-  capacity is the larger of the amount needed to meet the selected horizon
-  target and the steady-state floor implied by average arrivals.
-- The results checker compares aggregate exports with selected synthetic cases.
-  A pass does not certify the producing pipeline, source data, local policy, or
-  behavior outside the tested contract.
-
-Every material assumption is repeated beside the relevant tool.
-
-## Development
-
-The deployed site uses plain HTML, CSS, and JavaScript modules with no runtime
-dependencies. Node.js 20 or later plus exact development-only pins for
-`playwright-core` and `axe-core` support production-site journeys and WCAG 2
-A/AA checks against the Chrome already installed on GitHub-hosted runners.
-
-```bash
-npm ci --ignore-scripts
-npm test
-npm run check
-npm run validate
-```
-
-`npm run validate` runs deterministic domain and receipt-profile tests, contract digest and
-provenance checks, syntax checks, interface integrity checks, privacy-boundary
-checks, and network-primitive checks. `npm run test:browser` additionally
-serves the real site over HTTP and validates all four tool journeys, receipt
-replay and source matching, every public route against WCAG 2 A/AA, and the
-100,000-row worker path with responsiveness, cancellation, stale-run
-protection, bounded preview, and formula-safe download in Chrome. Set
-`CHROME_PATH` if Chrome is not on a standard executable path.
-
-## Project structure
-
-```text
-site/
-  index.html                  Public application
-  styles.css                  Responsive visual system
-  js/lib/                     Date, CSV, receipt, and hashing utilities
-  js/tools/                   Pure calculation modules
-  js/workers/                 Bounded extract-audit job and worker entrypoint
-  js/views/                   Isolated browser controllers
-  contracts/                  Byte-identical edge-suite contract catalog
-  js/app.js                   Browser interface
-  examples/                   Synthetic CSV snapshots
-  schemas/                    Published analysis-receipt JSON Schema
-tests/                        Deterministic unit and production-site browser tests
-scripts/validate-site.mjs     Static and boundary validation
-scripts/build-operational-release.mjs  Deterministic self-host release assets
-scripts/vendor-edge-contract.mjs  Catalog vendoring and parity validation
-.github/workflows/            CI and GitHub Pages deployment
-```
-
-## Related project
-
-[Health Data Edge Cases](https://github.com/dfrbagley-cpu/health-data-edge-cases)
-owns the deterministic synthetic fixtures, expected results, catalog generator,
-and reference comparison semantics. The toolkit consumes its pinned public
-catalog to provide a local browser interface; it does not maintain a second
-hand-written contract.
-
-## Contributing and licence
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[PUBLICATION_POLICY.md](PUBLICATION_POLICY.md) for synthetic-data, scope, and
-public/private publication boundaries. The code is licensed under
-[Apache License 2.0](LICENSE).
+The companion [Health Data Edge Cases](https://github.com/dfrbagley-cpu/health-data-edge-cases)
+owns the synthetic fixtures and expected-result contracts. This toolkit consumes
+its pinned, digest-verified public catalogue; it does not duplicate the rules.
 
 Created and maintained by [David Bagley](https://github.com/dfrbagley-cpu).
+AI-assisted implementation; product direction, domain decisions, and validation
+remain the maintainer's responsibility. Licensed under [Apache 2.0](LICENSE).
