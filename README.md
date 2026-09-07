@@ -18,6 +18,13 @@ on your device and has no backend, telemetry, or third-party asset requests.
 
 [![Actual synthetic extract audit: one added record, one removed, two changed, and separate schema changes](docs/images/extract-audit-example.jpg)](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor)
 
+## Repeat a monthly reporting check
+
+[Open the monthly report check](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/report-check.html)
+to save a profile, check local CSV snapshots, and account for a changed eligible
+event count. Start with the clean and invalid examples.
+[Read the walkthrough and boundaries](docs/MONTHLY_REPORT_CHECK.md).
+
 ## See a useful result in 60 seconds
 
 1. Open the [Extract Change Auditor](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/#auditor).
