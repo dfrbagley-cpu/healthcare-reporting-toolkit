@@ -18,10 +18,20 @@
     <h1>Check the files. Account for the changed total.</h1>
     <p>Compare two snapshots of the same reporting period. Check their structure and values, then account for changes in eligible event count.</p>
     <p class="muted">Files stay in this browser. No uploads or automatic saving. Each file: up to 10 MB and 100,000 rows.</p>
-    <div class="report-actions"><button id="example" type="button" class="button button-primary">Try the clean example</button><button id="defective" type="button" class="button button-secondary">Try an invalid example</button><button id="clear" type="button" class="button button-secondary">Clear files and results</button></div>
+    <fieldset class="mode-switch"><legend>Data mode</legend><label><input type="radio" name="data-mode" id="mode-synthetic" value="synthetic" checked> Synthetic</label><label><input type="radio" name="data-mode" id="mode-open" value="open"> Open</label></fieldset>
+    <p id="mode-description" role="status"></p>
+    <section id="synthetic-library" class="report-card" aria-labelledby="dataset-heading">
+      <h2 id="dataset-heading">Explore a complete synthetic dataset</h2>
+      <p>1,000 encounters per snapshot, 250 invented patient IDs, three sites, and three programs. Choose snapshots below, or download the CSVs and select them from your drive.</p>
+      <div class="report-actions" id="snapshot-downloads"></div>
+      <details><summary>Database, supporting tables, and expected results</summary><div id="dataset-downloads"></div><p>The complete SQL file creates a SQLite database with patient, site, program, and encounter-history tables plus baseline/current views. All records and definitions were invented for this example.</p></details>
+      <p>With the supplied profile and August period, the eligible count changes from <strong>800 to 794</strong>. The duplicate-key file should block reconciliation.</p>
+    </section>
+    <div class="report-actions"><button id="clear" type="button" class="button button-secondary">Clear files and results</button></div>
     <form id="report-form">
       <section class="report-card" aria-labelledby="files-heading">
         <h2 id="files-heading">1. Choose your snapshots</h2>
+        <div id="synthetic-pickers" class="report-grid"><label>Choose a synthetic baseline<select id="synthetic-baseline"><option value="">Choose a file…</option></select></label><label>Choose a synthetic current snapshot<select id="synthetic-current"><option value="">Choose a file…</option></select></label></div>
         <div class="report-grid"><label>Baseline CSV<input id="baseline" type="file" accept=".csv,text/csv"></label><label>Current CSV<input id="current" type="file" accept=".csv,text/csv"></label></div>
         <p id="file-status" role="status">No files selected.</p>
         <div class="report-grid"><label>Period starts<input id="start" type="date" required></label><label>Period ends<input id="end" type="date" required></label><label>Baseline extracted on<input id="baseline-extracted" type="date" required></label><label>Current extracted on<input id="current-extracted" type="date" required></label></div>

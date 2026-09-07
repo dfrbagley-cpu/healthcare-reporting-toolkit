@@ -22,7 +22,9 @@ on your device and has no backend, telemetry, or third-party asset requests.
 
 [Open the monthly report check](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/report-check.html)
 to save a profile, check local CSV snapshots, and account for a changed eligible
-event count. Start with the clean and invalid examples.
+event count. Synthetic mode includes selectable and downloadable 1,000-row
+snapshots from a complete invented clinic database. Switch to Open mode to
+check authorized files from your own drive.
 [Read the walkthrough and boundaries](docs/MONTHLY_REPORT_CHECK.md).
 
 ## See a useful result in 60 seconds

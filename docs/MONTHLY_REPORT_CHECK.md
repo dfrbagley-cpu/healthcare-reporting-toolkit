@@ -3,21 +3,48 @@
 [Open the workflow](https://dfrbagley-cpu.github.io/healthcare-reporting-toolkit/report-check.html).
 This is a separate workflow from the original extract auditor and reference-results checker.
 
-## Try it
+## Synthetic mode: choose real example files
 
-1. Select **Try the clean example**, then **Check and reconcile**.
-2. Both extracts have four rows. The eligible event count moves from **3 to 2**.
-   One eligible record is removed (-1); one existing record becomes ineligible
-   (-1); another becomes eligible (+1). The net change is -1 and remainder is 0.
-3. Download the contributions CSV to inspect the relevant keys and statuses.
-4. Save the profile. Load it again, confirm the reporting dates and coverage,
-   and repeat the check. Loading settings deliberately resets coverage confirmation.
-5. Select **Try an invalid example** and rerun. A duplicate composite identity
-   blocks reconciliation; it cannot disappear behind an all-clear result.
+The workflow starts in **Synthetic** mode. No files are silently selected.
+Choose `baseline.csv` in the synthetic baseline list and `current.csv` in the
+current list. These populate the actual file controls used by the analysis.
+Alternatively, download either CSV, then use **Choose File** to select it from
+your drive. The analysis uses exactly the files visible in those controls.
 
-The key is `site,event_id`. `N,001` and `S,001` are different records; `001`
-remains text. This demonstrates why event identity sometimes requires more than
-one column. All example identifiers and reporting rules are independently invented.
+The complete example has 1,000 encounters per snapshot, 250 invented patient
+IDs, three sites, three programs, and 1,070 retained encounter versions.
+Supporting tables, a data dictionary, profile, expected-results JSON, and a
+complete SQLite-compatible SQL database are downloadable from the same page.
+The SQL creates `patients`, `sites`, `programs`, `encounter_versions`, and two
+snapshot views. CSVs and database views contain the same records; the generator
+and independent SQL reconstruction are tested. No real data was used.
+
+1. Choose the baseline and current files. The synthetic profile and August 2026
+   period are supplied; confirm both snapshots cover that period.
+2. Select **Check and reconcile**. Both files contain 1,000 rows, but the eligible
+   event count changes from **800 to 794**.
+3. Contributions are: 16 eligible additions, 16 eligible removals, 10 existing
+   records becoming eligible, and 16 becoming ineligible. Net change **-6**;
+   unaccounted remainder **0**.
+4. Download the contributions or summary, and save the profile for another run.
+5. Choose or download `current-duplicate.csv` as the current file. Reconfirm its
+   coverage and rerun. The duplicate composite identity blocks reconciliation.
+
+The key is `site,event_id`: event IDs repeat across sites, and leading zeros
+remain text. Synthetic mode checks file bytes against the supplied snapshots;
+renaming a personal file does not make it synthetic. Editing or resaving the
+example CSV changes its bytes: use Open mode to experiment with modified files.
+Supporting tables and database SQL are for exploration, not snapshot inputs.
+
+## Open mode: use your own files
+
+Switch to **Open** to select authorized personal or organizational CSVs from
+your own drive. Both modes use the same local analysis engine and input limits.
+Open mode does not upload data or connect to an organizational database.
+Switching modes cancels active work and clears files, results, dates, coverage,
+and profile settings. No personal settings or data are carried into a synthetic
+session. Mode and verified synthetic dataset identity are recorded in summaries;
+Open-mode output makes no claim that its data is synthetic.
 
 ## Use approved local files
 

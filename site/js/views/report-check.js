@@ -1,6 +1,8 @@
-import { EXAMPLE_PROFILE, EXAMPLE_RUN, EXAMPLE_BASELINE, EXAMPLE_CURRENT, parseProfile, validateProfile } from "../tools/report-check.js";
+import { parseProfile, validateProfile } from "../tools/report-check.js";
+import { syntheticDatabase, SYNTHETIC_PROFILE, SYNTHETIC_RUN } from "../data/monthly-synthetic.js";
 const $ = (id) => document.getElementById(id);
-let worker = null, sampleFiles = null, report = null, csv = null, revision = 0;
+const database = syntheticDatabase();
+let worker = null, report = null, csv = null, revision = 0, mode = "synthetic";
 const split = (text) => text.split(",").map((s) => s.trim()).filter(Boolean);
 const lines = (text) => text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 function pair(line) {
@@ -83,7 +85,8 @@ $("report-form").addEventListener("input", invalidate);
 $("report-form").addEventListener("change", (event) => {
   invalidate();
   if (["baseline", "current"].includes(event.target.id)) {
-    sampleFiles = null; $("file-status").textContent = "Using your selected files.";
+    $(`synthetic-${event.target.id}`).value = "";
+    updateFileStatus();
     $(`${event.target.id}-complete`).checked = false;
   }
 });
@@ -100,27 +103,63 @@ $("profile-file").addEventListener("change", async (event) => {
   } catch (error) { $("error").textContent = error.message; }
 });
 $("save-profile").onclick = () => { try { download(jsonBlob(getProfile()), "report-profile.json"); } catch (error) { $("error").textContent = error.message; } };
-function example(defective = false) {
-  invalidate(); setProfile(structuredClone(EXAMPLE_PROFILE));
-  for (const [key, value] of Object.entries(EXAMPLE_RUN)) { const node = $(key.replaceAll("_", "-")); if (typeof value === "boolean") node.checked = value; else node.value = value; }
-  $("baseline").value = ""; $("current").value = "";
-  const current = defective ? EXAMPLE_CURRENT + "N,001,A,2026-08-01,2026-08-02,completed\n" : EXAMPLE_CURRENT;
-  sampleFiles = [new File([EXAMPLE_BASELINE], "synthetic-baseline.csv"), new File([current], "synthetic-current.csv")];
-  $("file-status").textContent = defective ? "Synthetic files loaded: current extract has a duplicate identity." : "Synthetic files loaded: four rows in each, eligible count changes from 3 to 2.";
-  $("status").textContent = "Example ready. Select Check and reconcile.";
+function updateFileStatus() {
+  $("file-status").textContent = ["baseline", "current"].map((side) => `${side}: ${$(side).files[0]?.name ?? "no file selected"}`).join(" · ");
 }
-$("example").onclick = () => example(); $("defective").onclick = () => example(true);
-$("clear").onclick = () => { invalidate(); sampleFiles = null; $("baseline").value = ""; $("current").value = ""; $("profile-file").value = "";
-  $("baseline-complete").checked = false; $("current-complete").checked = false; $("file-status").textContent = "No files selected."; $("status").textContent = "Files and results cleared. Profile settings remain."; };
+function clearFiles() {
+  invalidate();
+  for (const side of ["baseline", "current"]) { $(side).value = ""; $(`synthetic-${side}`).value = ""; $(`${side}-complete`).checked = false; }
+  $("profile-file").value = ""; updateFileStatus();
+}
+function changeMode(next) {
+  clearFiles(); $("report-form").reset(); mode = next;
+  $("mode-synthetic").checked = mode === "synthetic"; $("mode-open").checked = mode === "open";
+  $("synthetic-library").hidden = mode !== "synthetic"; $("synthetic-pickers").hidden = mode !== "synthetic";
+  if (mode === "synthetic") {
+    setProfile(structuredClone(SYNTHETIC_PROFILE));
+    for (const [key, value] of Object.entries(SYNTHETIC_RUN)) { const node = $(key.replaceAll("_", "-")); if (typeof value === "boolean") node.checked = value; else node.value = value; }
+  }
+  $("mode-description").textContent = mode === "synthetic"
+    ? "Synthetic mode: use the supplied example files. Choose from the list or select an unchanged downloaded CSV."
+    : "Open mode: select personal or organizational CSV files from your drive that you are authorized to use. Processing stays local to this browser.";
+  $("status").textContent = mode === "synthetic" ? "Choose your synthetic baseline and current files to begin." : "Open mode ready. Select your files and define your reporting check.";
+}
+for (const next of ["synthetic", "open"]) $(`mode-${next}`).onchange = () => changeMode(next);
+for (const side of ["baseline", "current"]) {
+  const select = $(`synthetic-${side}`);
+  for (const [name, file] of Object.entries(database.files).filter(([, f]) => f.role === side)) {
+    const option = document.createElement("option"); option.value = name; option.textContent = file.label; select.append(option);
+  }
+  select.addEventListener("change", (event) => {
+    event.stopPropagation(); invalidate();
+    const name = select.value;
+    if (!name) $(side).value = "";
+    else {
+      const file = database.files[name], transfer = new DataTransfer();
+      transfer.items.add(new File([file.text], name, { type: file.type }));
+      $(side).files = transfer.files;
+    }
+    $(`${side}-complete`).checked = false; updateFileStatus();
+  });
+}
+for (const [name, file] of Object.entries(database.files)) {
+  const button = document.createElement("button"); button.type = "button"; button.className = "button button-secondary";
+  button.textContent = file.role ? `Download ${name}` : `${name} — ${file.label}`; button.dataset.downloadFile = name;
+  button.onclick = () => download(new Blob([file.text], { type: file.type }), name);
+  $(file.role ? "snapshot-downloads" : "dataset-downloads").append(button);
+}
+$("clear").onclick = () => { clearFiles(); $("status").textContent = "Files and results cleared. Profile settings remain."; };
 $("cancel").onclick = () => { invalidate(); $("status").textContent = "Check cancelled. No result retained."; };
 $("report-form").onsubmit = (event) => {
   event.preventDefault(); invalidate();
+  const runRevision = revision;
   try {
     const profile = getProfile(), run = getRun();
-    const [baselineFile, currentFile] = sampleFiles ?? [$("baseline").files[0], $("current").files[0]];
+    const [baselineFile, currentFile] = [$("baseline").files[0], $("current").files[0]];
     worker = new Worker(new URL("../workers/report-check-worker.js", import.meta.url), { type: "module" });
     $("run").disabled = true; $("cancel").disabled = false; $("status").textContent = "Reading files…";
     worker.onmessage = ({ data }) => {
+      if (runRevision !== revision) return;
       if (data.type === "progress") { $("status").textContent = data.phase; return; }
       stop();
       if (data.type === "error") { $("error").textContent = data.message; $("status").textContent = "Check could not run."; return; }
@@ -128,8 +167,8 @@ $("report-form").onsubmit = (event) => {
       $("status").textContent = report.status === "complete" ? "Check complete." : "Check blocked. Review the findings below.";
       if (!data.exportAvailable) paragraph("reconciliation", "Full contribution export exceeds 24 MB. Split your extracts; the preview is not a complete export.");
     };
-    worker.onerror = () => { stop(); $("error").textContent = "The background check stopped. Retry with smaller files or an approved static server."; };
-    worker.postMessage({ baselineFile, currentFile, profile, run });
+    worker.onerror = () => { if (runRevision !== revision) return; stop(); $("error").textContent = "The background check stopped. Retry with smaller files or an approved static server."; };
+    worker.postMessage({ baselineFile, currentFile, profile, run, mode });
   } catch (error) { stop(); $("error").textContent = error.message; }
 };
 $("save-summary").onclick = () => {
@@ -139,3 +178,4 @@ $("save-summary").onclick = () => {
   download(jsonBlob(summary), "report-check-summary.json");
 };
 $("save-details").onclick = () => { if (csv) download(csv, "report-count-contributions.csv"); };
+changeMode("synthetic");

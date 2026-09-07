@@ -38,8 +38,8 @@ test("operational release is deterministic and extracts byte-for-byte", async ()
     });
 
     assert.deepEqual(first.outputFiles, [
-      "healthcare-reporting-toolkit-v0.7.0.zip",
-      "healthcare-reporting-toolkit-v0.7.0-provenance.json",
+      "healthcare-reporting-toolkit-v0.8.0.zip",
+      "healthcare-reporting-toolkit-v0.8.0-provenance.json",
       "SHA256SUMS"
     ]);
     for (const filename of first.outputFiles) {
@@ -68,7 +68,7 @@ test("operational release is deterministic and extracts byte-for-byte", async ()
     assert.ok(manifestBytes, "ZIP must contain RELEASE_MANIFEST.json");
     assert.deepEqual(manifestBytes, first.manifestBytes);
     const manifest = JSON.parse(manifestBytes.toString("utf8"));
-    assert.equal(manifest.version, "0.7.0");
+    assert.equal(manifest.version, "0.8.0");
     assert.equal(manifest.source_commit, source.commit);
     assert.equal(manifest.archive_timestamp, FIXED_ARCHIVE_TIMESTAMP);
     assert.equal(manifest.entrypoint, "index.html");
@@ -85,7 +85,7 @@ test("operational release is deterministic and extracts byte-for-byte", async ()
       join(firstDirectory, first.provenanceName)
     );
     const provenance = JSON.parse(provenanceBytes.toString("utf8"));
-    assert.equal(provenance.version, "0.7.0");
+    assert.equal(provenance.version, "0.8.0");
     assert.equal(provenance.source.commit, source.commit);
     assert.equal(
       provenance.source.repository,
