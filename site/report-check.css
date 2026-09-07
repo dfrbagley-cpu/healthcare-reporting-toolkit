@@ -4,10 +4,15 @@
 .report-card { background: white; border: 1px solid #d4dce2; border-radius: 16px; padding: 1.5rem; margin: 1.5rem 0; }
 .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .report-page label { display: block; font-weight: 600; margin: .6rem 0; }
-.report-page input:not([type=checkbox]), .report-page textarea { display: block; width: 100%; padding: .7rem; border: 1px solid #778792; border-radius: 6px; margin-top: .4rem; color: #172f3b; background: white; }
+.report-page input:not([type=checkbox]):not([type=radio]), .report-page textarea { display: block; width: 100%; padding: .7rem; border: 1px solid #778792; border-radius: 6px; margin-top: .4rem; color: #172f3b; background: white; }
 .report-page .check-label { display: flex; align-items: start; gap: .6rem; font-weight: 400; }
 .report-actions { display: flex; flex-wrap: wrap; gap: .7rem; margin: 1rem 0; }
 .report-page .muted { color: #435a67; }
+.mode-switch { display: flex; gap: 2rem; border: 1px solid #778792; border-radius: 10px; padding: .5rem 1rem; margin-top: 1.25rem; }
+.mode-switch legend { font-weight: 600; padding: 0 .4rem; }
+.report-page .mode-switch label { display: flex; align-items: center; gap: .5rem; }
+.report-page select { width: 100%; margin-top: .4rem; padding: .7rem; border: 1px solid #778792; border-radius: 6px; background: white; color: #172f3b; }
+#dataset-downloads { display: grid; gap: .75rem; padding: .5rem 0; }
 .report-page summary { cursor: pointer; padding: 1rem 0; font-weight: 600; }
 .report-page #error { color: #9c2020; }
 .report-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }

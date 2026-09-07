@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.0] - 2026-09-07
+
+- Add explicit Synthetic and Open modes to the monthly report check, with file, settings, coverage, and result reset on mode changes.
+- Add a complete independently invented dataset: 1,000 events per snapshot, 250 patient tokens, three sites/programs, retained versions, downloadable CSVs, database SQL, a profile, and expected results.
+- Populate actual file controls from the synthetic catalog or accept downloaded files through the normal drive picker. Verify synthetic snapshot bytes before labeling results synthetic.
+- Preserve prior receipt profiles and reject stale worker results after mode changes.
+
 ## [0.7.0] - 2026-09-07
 
 - Add monthly report checks with reusable profiles, explicit column mappings, preflight checks, and coverage confirmation.
@@ -163,3 +170,5 @@ All notable changes to this project are documented here.
 [0.1.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.1.0
 
 [0.7.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.7.0
+
+[0.8.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.8.0
