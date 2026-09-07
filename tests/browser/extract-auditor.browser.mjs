@@ -66,6 +66,7 @@ try {
   await verifyReceiptJourney(page, reportingWindowReceipt);
   await verifyAccessibility(page, "receipts");
   await verifyMobileNavigation(page);
+  await verifyMonthlyReport(page);
   assert.deepEqual(
     accessibilityViolations,
     [],
@@ -93,6 +94,58 @@ const cleanupFailures = cleanupResults
   .map((result) => result.reason);
 if (cleanupFailures.length > 0) {
   throw new AggregateError(cleanupFailures, "Browser-test cleanup failed.");
+}
+
+async function verifyMonthlyReport(page) {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${server.url}/report-check.html`);
+  await page.addScriptTag({ url: `${server.url}/__test__/axe.min.js` });
+  await page.locator("#example").click();
+  await page.locator("#run").click();
+  await page.waitForFunction(() => document.querySelector("#status").textContent === "Check complete.");
+  assert.match(await page.locator("#reconciliation").textContent(), /Baseline eligible events3/);
+  assert.match(await page.locator("#reconciliation").textContent(), /Current eligible events2/);
+  await verifyAccessibility(page, "monthly-report-complete");
+  const summaryDownload = page.waitForEvent("download");
+  await page.locator("#save-summary").click();
+  const summary = JSON.parse(await readFile(await (await summaryDownload).path(), "utf8"));
+  assert.equal(summary.reconciliation.delta, -1);
+  assert.equal(Object.hasOwn(summary.reconciliation, "contributions"), false);
+  const profileDownload = page.waitForEvent("download");
+  await page.locator("#save-profile").click();
+  const profilePath = await (await profileDownload).path();
+  await page.locator("#keys").fill("wrong");
+  assert.equal(await page.locator("#results").isVisible(), false);
+  await page.locator("#profile-file").setInputFiles(profilePath);
+  await page.waitForFunction(() => document.querySelector("#status").textContent.startsWith("Profile loaded"));
+  assert.equal(await page.locator("#keys").inputValue(), "site,event_id");
+  assert.equal(await page.locator("#baseline-complete").isChecked(), false);
+  await page.locator("#baseline-complete").check(); await page.locator("#current-complete").check();
+  await page.locator("#run").click();
+  await page.waitForFunction(() => document.querySelector("#status").textContent === "Check complete.");
+  await page.locator("#defective").click(); await page.locator("#run").click();
+  await page.waitForFunction(() => document.querySelector("#result-heading").textContent.startsWith("Blocked"));
+  assert.equal(await page.locator("#save-details").isDisabled(), true);
+  assert.match(await page.locator("#checks").textContent(), /Unique record keysfailed/);
+  await verifyAccessibility(page, "monthly-report-blocked");
+  await page.locator("#clear").click();
+  assert.equal(await page.locator("#results").isVisible(), false);
+  assert.equal(await page.locator("#checks").textContent(), "");
+  await page.locator("#example").click();
+  const lines = ["site,event_id,program,referred_on,service_on,status"];
+  for (let i = 0; i < 100000; i++) lines.push(`N,SYN-${i},A,2026-08-01,2026-08-02,completed`);
+  const file = { name: "synthetic-large.csv", mimeType: "text/csv", buffer: Buffer.from(lines.join("\n")) };
+  await page.locator("#baseline").setInputFiles(file); await page.locator("#current").setInputFiles(file);
+  await page.locator("#baseline-complete").check(); await page.locator("#current-complete").check();
+  await page.locator("#run").click();
+  await page.locator("#cancel").click();
+  assert.equal(await page.locator("#results").isVisible(), false);
+  await page.locator("#run").click();
+  await page.waitForFunction(() => document.querySelector("#status").textContent === "Check complete.", null, { timeout: 60000 });
+  assert.match(await page.locator("#reconciliation").textContent(), /Current eligible events100000/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  console.log("Monthly workflow: profile import/export, summaries, invalid inputs, cancellation, 100,000 rows, mobile layout, and accessibility passed.");
 }
 
 async function verifyAdoptionFrontDoor(page) {
@@ -194,7 +247,7 @@ async function verifyReceiptJourney(page, reportingWindowReceipt) {
     await page.locator("#receipt-tool").textContent(),
     "Reporting Window Builder"
   );
-  assert.equal(await page.locator("#receipt-version").textContent(), "v0.6.1");
+  assert.equal(await page.locator("#receipt-version").textContent(), "v0.7.0");
   assert.equal(await page.locator("#receipt-digest-status").textContent(), "Match");
   assert.equal(await page.locator("#receipt-replay-status").textContent(), "Matched");
   assert.equal(await page.locator("#receipt-source-panel").isHidden(), true);
@@ -475,7 +528,7 @@ async function verifyConformanceJourney(page) {
 }
 
 async function verifyAccessibility(page, route) {
-  await showRoute(page, route);
+  if (!route.startsWith("monthly-report")) await showRoute(page, route);
   const violations = await page.evaluate(async () => {
     const results = await window.axe.run(document, {
       runOnly: {

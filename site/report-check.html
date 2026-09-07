@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'self'">
+  <title>Monthly report check | Healthcare Reporting Toolkit</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="report-check.css">
+  <script type="module" src="js/views/report-check.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="site-header"><div class="header-inner"><a class="brand" href="index.html#overview">Healthcare Reporting Toolkit</a><nav aria-label="Primary navigation"><a href="index.html#auditor">Extract comparison</a> · <a href="index.html#validate">Reference checks</a></nav></div></header>
+  <main id="main-content" class="report-page" tabindex="-1">
+    <p class="eyebrow">Repeatable reporting checks</p>
+    <h1>Check the files. Account for the changed total.</h1>
+    <p>Compare two snapshots of the same reporting period. Check their structure and values, then account for changes in eligible event count.</p>
+    <p class="muted">Files stay in this browser. No uploads or automatic saving. Each file: up to 10 MB and 100,000 rows.</p>
+    <div class="report-actions"><button id="example" type="button" class="button button-primary">Try the clean example</button><button id="defective" type="button" class="button button-secondary">Try an invalid example</button><button id="clear" type="button" class="button button-secondary">Clear files and results</button></div>
+    <form id="report-form">
+      <section class="report-card" aria-labelledby="files-heading">
+        <h2 id="files-heading">1. Choose your snapshots</h2>
+        <div class="report-grid"><label>Baseline CSV<input id="baseline" type="file" accept=".csv,text/csv"></label><label>Current CSV<input id="current" type="file" accept=".csv,text/csv"></label></div>
+        <p id="file-status" role="status">No files selected.</p>
+        <div class="report-grid"><label>Period starts<input id="start" type="date" required></label><label>Period ends<input id="end" type="date" required></label><label>Baseline extracted on<input id="baseline-extracted" type="date" required></label><label>Current extracted on<input id="current-extracted" type="date" required></label></div>
+        <label class="check-label"><input id="baseline-complete" type="checkbox"> I have confirmed baseline coverage for the whole period.</label>
+        <label class="check-label"><input id="current-complete" type="checkbox"> I have confirmed current coverage for the whole period.</label>
+        <p class="muted">Coverage is your confirmation, not something inferred from file dates. Unconfirmed coverage blocks the total reconciliation.</p>
+      </section>
+      <section class="report-card" aria-labelledby="rules-heading">
+        <h2 id="rules-heading">2. Define the check once</h2>
+        <div class="report-grid"><label>Saved profile<input id="profile-file" type="file" accept=".json,application/json"></label><div><button id="save-profile" type="button" class="button button-secondary">Save profile</button><p class="muted">Profiles contain settings and column names, never selected data. Dates and coverage are entered each run.</p></div></div>
+        <label>Profile name<input id="profile-name" required maxlength="256" value="My monthly check"></label>
+        <div class="report-grid"><label>Record key columns, separated by commas<input id="keys" required placeholder="site,event_id"></label><label>Other required columns, separated by commas<input id="required-columns" placeholder="program"></label><label>Service date column<input id="date-column" required value="service_on"></label><label>Status column<input id="status-column" required value="status"></label><label>Eligible status values, separated by commas<input id="eligible-values" required value="completed"></label></div>
+        <label class="check-label"><input id="trim" type="checkbox" checked> Ignore surrounding whitespace when checking values and keys.</label>
+        <details><summary>Column mappings and additional rules</summary>
+          <p>Mappings use one <code>source=destination</code> per line. Names after mapping are used by all rules. Values remain text; identifiers keep leading zeros.</p>
+          <div class="report-grid"><label>Baseline mappings<textarea id="baseline-mappings" rows="3" placeholder="old_id=event_id"></textarea></label><label>Current mappings<textarea id="current-mappings" rows="3" placeholder="new_id=event_id"></textarea></label></div>
+          <label>Allowed values: one column=value1,value2 per line<textarea id="allowed" rows="3" placeholder="status=completed,cancelled"></textarea></label>
+          <div class="report-grid"><label>Chronology start column (optional)<input id="chronology-start" placeholder="referred_on"></label><label>Chronology end column<input id="chronology-end" placeholder="service_on"></label></div>
+          <label class="check-label"><input id="allow-open" type="checkbox"> Allow a blank chronology end date (ongoing).</label>
+          <p class="muted">Dates must be YYYY-MM-DD. Same-day events pass. The measure's service date remains required even if another chronology check allows an open end.</p>
+        </details>
+      </section>
+      <div class="report-actions"><button id="run" class="button button-primary" type="submit">Check and reconcile</button><button id="cancel" class="button button-secondary" type="button" disabled>Cancel</button></div>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p><p id="error" role="alert"></p>
+    <section id="results" class="report-card" hidden aria-labelledby="result-heading"><h2 id="result-heading">Results</h2><div id="coverage"></div><div id="checks"></div><div id="reconciliation"></div><div class="report-actions"><button id="save-summary" type="button" class="button button-secondary">Download check summary</button><button id="save-details" type="button" class="button button-secondary" disabled>Download contributions CSV</button></div><p>Summaries contain rule names, dates, counts, and file fingerprints. Detailed exports contain keys and values. Review sensitivity before sharing. These are check results, not approval or proof of authenticity.</p></section>
+    <section class="report-card"><h2>What this establishes</h2><p>A complete result accounts for the count difference under your selected definition. It does not infer causes, reconstruct overwritten history, validate clinical decisions, or add together distinct-person counts. Changed records that remain eligible contribute zero to this count; inspect other changes in the <a href="index.html#auditor">extract comparison</a>.</p><p>Study historical cutoffs, referral chronology, and dated mappings in the <a href="https://github.com/dfrbagley-cpu/health-data-edge-cases/blob/main/docs/REPORTING_PACKS.md">executable reporting packs</a>.</p></section>
+  </main>
+</body>
+</html>

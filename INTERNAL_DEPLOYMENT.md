@@ -125,3 +125,9 @@ Rollback means repointing the route to the previous verified directory, then
 recording the reason and validation result. Analysis receipts declare their
 toolkit version, and the Receipt Inspector preserves published compatibility;
 do not relabel an older directory as a newer release.
+
+## Monthly checks
+
+The release also includes `report-check.html`. Open it from the toolkit home
+page to save local comparison profiles and reconcile eligible event counts.
+The same static-server setup and file limits apply; no backend is required.

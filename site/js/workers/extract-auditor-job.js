@@ -54,7 +54,7 @@ export async function runExtractAuditJob({
   };
 }
 
-async function loadExtract({
+export async function loadExtract({
   file,
   label,
   rangeStart,

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.7.0] - 2026-09-07
+
+- Add monthly report checks with reusable profiles, explicit column mappings, preflight checks, and coverage confirmation.
+- Account for changed eligible event counts with mutually exclusive contributions and bounded exports.
+- Keep checks in a cancellable worker and preserve all published receipt profiles.
+
 ## [0.6.1] - 2026-09-02
 
 ### Added
@@ -155,3 +161,5 @@ All notable changes to this project are documented here.
 [0.3.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.1.0
+
+[0.7.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.7.0
