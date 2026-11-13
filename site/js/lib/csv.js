@@ -4,11 +4,10 @@ export function parseCsv(
 ) {
   const { headers, rows } = parseCsvRows(input, options);
   const records = rows.map((values) => {
-    const record = {};
-    for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
-      record[headers[columnIndex]] = values[columnIndex];
-    }
-    return record;
+    // Define own data properties, including headers such as __proto__.
+    return Object.fromEntries(
+      headers.map((header, columnIndex) => [header, values[columnIndex]])
+    );
   });
 
   return { headers, records };

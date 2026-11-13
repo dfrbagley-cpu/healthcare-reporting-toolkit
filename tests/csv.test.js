@@ -152,3 +152,23 @@ test("reports bounded parsing progress without changing results", () => {
   assert.equal(fractions.at(-1), 1);
   assert.ok(fractions.every((value) => value >= 0 && value <= 1));
 });
+
+
+test("preserves prototype-like column names as own data properties", () => {
+  const { records } = parseCsv("__proto__,constructor,toString\nalpha,beta,gamma");
+  const [record] = records;
+  assert.equal(Object.getPrototypeOf(record), Object.prototype);
+  for (const [key, value] of [["__proto__", "alpha"], ["constructor", "beta"], ["toString", "gamma"]]) {
+    assert.equal(Object.hasOwn(record, key), true);
+    assert.equal(record[key], value);
+  }
+  assert.equal(stringifyCsv(records, ["__proto__", "constructor", "toString"]),
+    "__proto__,constructor,toString\r\nalpha,beta,gamma\r\n");
+});
+
+test("button state changes do not interpolate text and background contrast", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("../site/styles.css", import.meta.url), "utf8");
+  const buttonRule = css.match(/\.button\s*\{([^}]+)\}/)[1];
+  assert.match(buttonRule, /transition:\s*transform 140ms ease;/);
+});

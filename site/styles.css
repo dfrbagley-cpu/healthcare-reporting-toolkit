@@ -345,11 +345,9 @@ main {
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
+  /* Switch text/background together: interpolated enabled/disabled colours
+     can briefly fail contrast even when both end states pass. */
+  transition: transform 140ms ease;
 }
 
 .button:hover {
