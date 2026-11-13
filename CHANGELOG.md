@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [0.8.1] - 2026-11-13
+
+- Preserve prototype-like CSV headers and avoid transient low-contrast button colours during state changes.
+
 ## [0.8.0] - 2026-09-07
 
 - Add explicit Synthetic and Open modes to the monthly report check, with file, settings, coverage, and result reset on mode changes.
@@ -172,3 +176,5 @@ All notable changes to this project are documented here.
 [0.7.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.7.0
 
 [0.8.0]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.8.0
+
+[0.8.1]: https://github.com/dfrbagley-cpu/healthcare-reporting-toolkit/releases/tag/v0.8.1

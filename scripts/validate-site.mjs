@@ -39,7 +39,7 @@ const publicationPolicy = readFileSync(
   join(projectRoot, "PUBLICATION_POLICY.md"),
   "utf8"
 );
-const RELEASE_DATE = "2026-09-07";
+const RELEASE_DATE = "2026-11-13";
 const siteFiles = walk(siteRoot);
 const projectFiles = walk(projectRoot);
 
