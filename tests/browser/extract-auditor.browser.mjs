@@ -13,6 +13,7 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "playwright-core";
+import { TOOLKIT_VERSION } from "../../site/js/lib/analysis-receipt.js";
 import { CONFORMANCE_CATALOG } from "../../site/js/data/edge-case-contracts.js";
 import { BASELINE_SAMPLE, CURRENT_SAMPLE } from "../../site/js/samples.js";
 import { matchingExampleForCase } from "../../site/js/tools/conformance-checker.js";
@@ -283,7 +284,7 @@ async function verifyReceiptJourney(page, reportingWindowReceipt) {
     await page.locator("#receipt-tool").textContent(),
     "Reporting Window Builder"
   );
-  assert.equal(await page.locator("#receipt-version").textContent(), "v0.8.0");
+  assert.equal(await page.locator("#receipt-version").textContent(), `v${TOOLKIT_VERSION}`);
   assert.equal(await page.locator("#receipt-digest-status").textContent(), "Match");
   assert.equal(await page.locator("#receipt-replay-status").textContent(), "Matched");
   assert.equal(await page.locator("#receipt-source-panel").isHidden(), true);
